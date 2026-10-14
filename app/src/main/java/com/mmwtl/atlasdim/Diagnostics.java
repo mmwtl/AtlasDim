@@ -21,6 +21,7 @@ final class Diagnostics {
     private static final int PROBE_TIMEOUT_MS = 3000;
     private static final long STEP_TIMEOUT_MS = 15000;
     private static final int MAX_LINES = 120;
+    private static final int MAX_WINDOW_LINES = 600;
     private static final String SUMMARY = "\n== Итог ==\n";
     private static final String SHARED_ANDROID = "/data/vendor/nfs/shared";
 
@@ -44,7 +45,10 @@ final class Diagnostics {
             {"Дисплеи QNX Screen (/tmp/graphics.conf)",
                     "grep -v -E '^[[:space:]]*(#|$)' /tmp/graphics.conf 2>&1"},
             {"Окна QNX Screen",
-                    "for f in /dev/screen/*/win-*; do echo \"== $f\"; "
+                    "for f in /dev/screen/*/win-*; do "
+                    // Служебные framebuffer-окна дисплеев одинаковы и только удлиняют отчёт.
+                    + "grep -q '^class = framebuffer' \"$f\" 2>/dev/null && continue; "
+                    + "echo \"== $f\"; "
                     + "L=$(grep -E '^(display|status|visible|order|class|id string|pos|size"
                     + "|global alpha|transparency|flags) ' \"$f\" 2>/dev/null); "
                     + "if [ -n \"$L\" ]; then echo \"$L\"; else head -12 \"$f\" 2>&1; fi; done"},
@@ -56,8 +60,11 @@ final class Diagnostics {
             {"Логи демонов",
                     "for f in /tmp/ghudbridgelited-dim*.log; do [ -f \"$f\" ] || continue; "
                     + "echo \"== $f\"; tail -8 \"$f\"; done"},
-            {"Журнал QNX (cluster/screen)",
-                    "slog2info 2>/dev/null | grep -i -E 'cluster|screen' | tail -30"},
+            // Без PrintPropValue: VehicleService пишет CLUSTER_* свойства по нескольку раз в секунду.
+            {"Журнал QNX (screen/приборка)",
+                    "slog2info 2>/dev/null | grep -i -E 'screen|kanzi|cluster-hmi|earlytt"
+                    + "|ghudbridge|error|fail' | grep -v -E 'PrintPropValue|WarningLogOuts'"
+                    + " | tail -30"},
     };
 
     private Diagnostics() {
@@ -131,7 +138,9 @@ final class Diagnostics {
                 } catch (IOException e) {
                     out = "ошибка: " + e.getMessage();
                 }
-                body.append(out.isEmpty() ? "(пусто)" : limit(out)).append('\n');
+                body.append(out.isEmpty() ? "(пусто)"
+                        : limit(out, step == STEPS[2] ? MAX_WINDOW_LINES : MAX_LINES))
+                        .append('\n');
                 if (step == STEPS[1]) {
                     graphics = out;
                 } else if (step == STEPS[2]) {
@@ -146,12 +155,39 @@ final class Diagnostics {
             return finish(head, summary, body);
         }
 
+        List<Window> windows = windows(screen);
         summary.add("• graphics.conf: дисплеев " + count(graphics, "begin display")
-                + ", окон QNX Screen " + count(screen, "== /dev/screen/"));
-        summary.add(mark(pidin.contains("cluster-hmi")) + " cluster-hmi (приборы, dpy-1)");
-        summary.add(mark(pidin.contains("cluster-bg-hmi")) + " cluster-bg-hmi (фон, dpy-2)");
-        summary.add(mark(screen.contains("/EarlyTT/")) + " EarlyTT (контрольные лампы)");
+                + ", окон QNX Screen " + windows.size());
+        summary.add(mark(pidin.contains("cluster-hmi")) + " cluster-hmi (Kanzi приборки)");
+        summary.add(mark(pidin.contains("EarlyTT")) + " EarlyTT (контрольные лампы)");
+        for (int display = 1; display <= 2; display++) {
+            StringBuilder line = new StringBuilder("• dpy-" + display + ":");
+            for (Window w : windows) {
+                if (w.display == display) {
+                    line.append(' ').append(w).append(';');
+                }
+            }
+            summary.add(line.toString());
+        }
         List<String[]> ours = DimDaemon.processes(pidin);
+        List<String> ourPids = new ArrayList<>();
+        for (String[] process : ours) {
+            ourPids.add(process[0]);
+        }
+        if (app.config != null) {
+            for (SceneConfig.Layer layer : app.config.layers()) {
+                if (!layer.enabled) {
+                    continue;
+                }
+                for (Window w : windows) {
+                    if (w.display == layer.display && w.order == layer.z
+                            && !ourPids.contains(w.pid)) {
+                        summary.add("⚠ " + layer.label() + " dpy-" + layer.display + " z="
+                                + layer.z + " совпадает с окном " + w.id);
+                    }
+                }
+            }
+        }
         if (ours.isEmpty()) {
             summary.add("• Наших демонов не запущено");
         }
@@ -166,6 +202,54 @@ final class Diagnostics {
         int from = report.indexOf(SUMMARY);
         int to = report.indexOf("\n\n== ", from);
         return from < 0 || to < 0 ? report : report.substring(from + SUMMARY.length(), to);
+    }
+
+    /** Окно QNX Screen из вывода шага «Окна»: id, дисплей, order, статус. */
+    static final class Window {
+        String id = "?";
+        String pid = "";
+        int display = -1;
+        int order;
+        String status = "?";
+
+        @Override
+        public String toString() {
+            return id + " z=" + order + " " + status;
+        }
+    }
+
+    static List<Window> windows(String screen) {
+        List<Window> windows = new ArrayList<>();
+        Window current = null;
+        for (String line : screen.split("\n")) {
+            line = line.trim();
+            if (line.startsWith("== /dev/screen/")) {
+                current = new Window();
+                String[] path = line.substring("== /dev/screen/".length()).split("/");
+                current.pid = path[0];
+                windows.add(current);
+            } else if (current != null) {
+                int eq = line.indexOf(" = ");
+                if (eq < 0) {
+                    continue;
+                }
+                String key = line.substring(0, eq);
+                String value = line.substring(eq + 3).trim();
+                try {
+                    if (key.equals("id string")) {
+                        current.id = value.isEmpty() ? "?" : value;
+                    } else if (key.equals("display")) {
+                        current.display = Integer.parseInt(value.replace("dpy-", ""));
+                    } else if (key.equals("order")) {
+                        current.order = Integer.parseInt(value);
+                    } else if (key.equals("status")) {
+                        current.status = value;
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return windows;
     }
 
     private static int count(String text, String what) {
@@ -184,16 +268,16 @@ final class Diagnostics {
         sb.append("\n== ").append(title).append(" ==\n");
     }
 
-    private static String limit(String text) {
+    private static String limit(String text, int max) {
         String[] lines = text.split("\n");
-        if (lines.length <= MAX_LINES) {
+        if (lines.length <= max) {
             return text;
         }
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < MAX_LINES; i++) {
+        for (int i = 0; i < max; i++) {
             sb.append(lines[i]).append('\n');
         }
-        return sb.append("… ещё ").append(lines.length - MAX_LINES).append(" строк").toString();
+        return sb.append("… ещё ").append(lines.length - max).append(" строк").toString();
     }
 
     private static String finish(StringBuilder head, List<String> summary, StringBuilder body) {

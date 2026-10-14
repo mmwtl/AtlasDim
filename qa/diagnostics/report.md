@@ -20,8 +20,20 @@
   (`cluster`, `EarlyTT`, `hud-hmi`, `vmwindow`, `screen`, наши демоны); `netstat`
   по портам 50210–50212; файлы и хвосты логов наших демонов; `slog2info` по
   cluster/screen. Каждая команда — таймаут 15 с, вывод до 120 строк.
-- Итог: число дисплеев в graphics.conf и окон Screen, наличие cluster-hmi,
-  cluster-bg-hmi, EarlyTT и список наших демонов.
+- Итог: число дисплеев в graphics.conf и окон Screen, процессы cluster-hmi и EarlyTT,
+  окна dpy-1/dpy-2 (id, order, статус), предупреждение, если z нашего включённого окна
+  совпадает с order чужого окна на том же дисплее, и список наших демонов.
+
+## Первый отчёт с ГУ (2026-10-14, G426_J1, QNX 7.0 SA8155 D0128G v6.0.53)
+
+- Связь, вход, 5 дисплеев, cluster-hmi и EarlyTT — в порядке.
+- Процесса `cluster-bg-hmi` нет: фон dpy-2 — окно `DPY_CLUSTER_FUNCTION` процесса
+  `cluster-hmi` (order 3, FULLSCREEN). Проверка «cluster-bg-hmi» по `pidin` убрана.
+- На dpy-1 кроме `DPY_CLUSTER_EARLYTT` order 10 (VISIBLE) есть второе окно
+  `DPY_CLUSTER_EARLYTT` order 9 (REALIZED) — совпадает с z=9 часов по умолчанию.
+- Список окон обрезался на 120 строках: framebuffer-окна теперь пропускаются,
+  лимит шага окон — 600 строк. Журнал `slog2info` забивали `PrintPropValue`
+  VehicleService — отфильтрованы.
 - К портам демонов приложение не подключается (демон держит одну сессию gcp/1),
   на QNX ничего не запускается и не останавливается.
 

@@ -88,6 +88,7 @@
     <string name="link_boot">Возвращать на приборку после загрузки ГУ</string>
     <string name="link_background_hint">Композиция работает в фоне и без открытого приложения. «Убрать всё» снимает окна и отключает возврат после загрузки.</string>
     <string name="link_manual">Вручную, если отличается</string>
+    <string name="link_manual_toggle" translatable="false">%1$s %2$s</string>
     <string name="link_host">Хост QNX</string>
     <string name="link_password">Пароль root</string>
     <string name="link_password_built">из сборки</string>

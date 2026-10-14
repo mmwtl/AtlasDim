@@ -404,7 +404,8 @@ public final class MainActivity extends ScaledActivity {
     }
 
     private void setExpanded(TextView head, View body, boolean expanded) {
-        head.setText((expanded ? "▾ " : "▸ ") + getString(R.string.link_manual));
+        head.setText(getString(R.string.link_manual_toggle, expanded ? "▾" : "▸",
+                getString(R.string.link_manual)));
         body.setVisibility(expanded ? View.VISIBLE : View.GONE);
     }
 
