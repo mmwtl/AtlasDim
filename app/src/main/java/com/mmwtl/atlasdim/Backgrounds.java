@@ -29,15 +29,19 @@ final class Backgrounds {
     static final String FILE = "file:";
     static final String ASSET = "asset:";
     // Картинки 1920×532 из output/background-concepts-sides (узкие чёрные полосы по бокам), пережатые в WebP.
+    // g01–g03 — geegeek-wallpaper-sources: обрезка по центру до 1920:532 и WebP q80.
     static final String[] PRESETS = {COLOR, "night", "aurora", "sunset", "carbon",
             ASSET + "v01-graphite-road.webp", ASSET + "v02-blue-grid.webp",
             ASSET + "v03-mountain-pass.webp", ASSET + "v04-light-tunnel.webp",
             ASSET + "v05-copper-dawn.webp", ASSET + "c01-night-highway.webp",
             ASSET + "c02-neon-horizon.webp", ASSET + "c03-warp.webp",
-            ASSET + "c04-aurora.webp", ASSET + "c05-dusk-forest.webp"};
+            ASSET + "c04-aurora.webp", ASSET + "c05-dusk-forest.webp",
+            ASSET + "g01-night-road.webp", ASSET + "g02-mountains.webp",
+            ASSET + "g03-space.webp"};
     static final String[] LABELS = {"Цвет", "Ночь", "Аврора", "Закат", "Карбон",
             "Графит", "Сетка", "Перевал", "Тоннель", "Медь",
-            "Трасса", "Неон", "Варп", "Сияние", "Лес"};
+            "Трасса", "Неон", "Варп", "Сияние", "Лес",
+            "Серпантин", "Горы", "Космос"};
     private static AssetManager assets;
     private static String cachedPath;
     private static Bitmap cached;
