@@ -112,8 +112,6 @@
     <string name="diag_share">Поделиться</string>
     <string name="diag_share_none">Нет приложений, которым можно отправить файл</string>
     <string name="diag_saved">\nФайл: %1$s</string>
-    <string name="about_title">О приложении</string>
-    <string name="about_text">Atlas Dim %1$s — свои часы, топливо и фон на приборке ГУ G636 через QNX.</string>
 
     <string name="cancel">Отмена</string>
 

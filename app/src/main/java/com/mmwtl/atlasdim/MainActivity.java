@@ -164,8 +164,11 @@ public final class MainActivity extends ScaledActivity {
 
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        titleRow.addView(Ui.heading(this, R.string.app_name, 24),
-                new LinearLayout.LayoutParams(0, -2, 1));
+        titleRow.setBaselineAligned(false);
+        titleRow.addView(Ui.heading(this, R.string.app_name, 24));
+        TextView versionView = Ui.text(this, "v" + version(), 12, Ui.TEXT_SECONDARY);
+        versionView.setPadding(dp(8), dp(6), 0, 0);
+        titleRow.addView(versionView, new LinearLayout.LayoutParams(0, -2, 1));
         pill = Ui.text(this, "", 13, Ui.TEXT);
         pill.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         pill.setPadding(dp(12), dp(6), dp(12), dp(6));
@@ -386,9 +389,6 @@ public final class MainActivity extends ScaledActivity {
         scale.setProgress(configuredScaleTenths(this));
         scaleValue.setText(scaleText(scale.getProgress()));
         ui.addView(scale, margin(4));
-
-        LinearLayout about = card(page, R.string.about_title);
-        about.addView(hint(getString(R.string.about_text, version())));
 
         LinearLayout gstore = card(page, R.string.gstore_title);
         gstore.addView(hint(R.string.gstore_hint));
