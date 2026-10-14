@@ -57,8 +57,9 @@ final class SceneConfig {
             this.kind = kind;
             background = kind == Kind.BACKGROUND;
             enabled = kind == Kind.CLOCK;
-            display = background ? 2 : 1;
-            z = background ? 0 : kind == Kind.CLOCK ? LAMPS_Z - 1 : LAMPS_Z - 2;
+            display = background || SINGLE_LAYER ? 2 : 1;
+            int top = SINGLE_LAYER ? CLUSTER_Z + 3 : LAMPS_Z;
+            z = background ? 0 : kind == Kind.CLOCK ? top - 1 : top - 2;
             x = kind == Kind.FUEL ? WIDTH - 300 : 0;
             y = background ? 0 : 482;
             w = background ? WIDTH : kind == Kind.CLOCK ? 100 : 300;
@@ -103,6 +104,14 @@ final class SceneConfig {
             if (display == 1 && z >= LAMPS_Z) {
                 throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
                         + LAMPS_Z + " (лампы)");
+            }
+            if (SINGLE_LAYER && display == 1) {
+                throw new IllegalArgumentException(prefix + "на " + Build.MODEL
+                        + " окно на dpy-1 делает приборку чёрной — только dpy-2");
+            }
+            if (SINGLE_LAYER && z <= CLUSTER_Z) {
+                throw new IllegalArgumentException(prefix + "на " + Build.MODEL
+                        + " z > " + CLUSTER_Z + ", иначе окно под штатной приборкой");
             }
             if (background && SINGLE_LAYER) {
                 throw new IllegalArgumentException("Фон на " + Build.MODEL
@@ -208,9 +217,16 @@ final class SceneConfig {
         }
     }
 
-    /** z на dpy-1 не выше ламп этой модели; иначе — значение по умолчанию. */
-    static int allowedZ(Layer layer) {
-        return layer.display == 1 && layer.z >= LAMPS_Z ? new Layer(layer.kind).z : layer.z;
+    /** Экран и z, недопустимые для этой модели (старый черновик), — по умолчанию. */
+    static void allowPlacement(Layer layer) {
+        boolean stale = layer.display < 1 || layer.display > 2
+                || layer.display == 1 && layer.z >= LAMPS_Z
+                || SINGLE_LAYER && (layer.display == 1 || layer.z <= CLUSTER_Z);
+        if (stale) {
+            Layer initial = new Layer(layer.kind);
+            layer.display = initial.display;
+            layer.z = initial.z;
+        }
     }
 
     static SceneConfig fromJson(String text) throws JSONException {
@@ -238,9 +254,9 @@ final class SceneConfig {
         // Композиция, сохранённая до этих проверок, не должна ломать возврат после загрузки.
         if (SINGLE_LAYER) {
             config.background.enabled = false;
-            config.clock.z = allowedZ(config.clock);
-            config.fuel.z = allowedZ(config.fuel);
         }
+        allowPlacement(config.clock);
+        allowPlacement(config.fuel);
         return config;
     }
 }

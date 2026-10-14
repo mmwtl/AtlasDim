@@ -895,14 +895,12 @@ public final class MainActivity extends ScaledActivity {
             port.setCompoundDrawablePadding(dp(8));
             port.setCompoundDrawablesRelative(dot(ScenePreview.color(defaults.kind)), null, null, null);
             card.addView(port);
-            display = parse(prefs.getString(key + "display", null), defaults.display);
-            z = parse(prefs.getString(key + "z", null), defaults.z);
-            if (display < 1 || display > 2) {
-                display = defaults.display; // Черновик с убранным центральным экраном (dpy-3).
-            }
-            if (display == 1 && z >= SceneConfig.LAMPS_Z) {
-                z = defaults.z; // Черновик с прежним пределом ламп (z=9 на G426_J1).
-            }
+            SceneConfig.Layer saved = new SceneConfig.Layer(defaults.kind);
+            saved.display = parse(prefs.getString(key + "display", null), defaults.display);
+            saved.z = parse(prefs.getString(key + "z", null), defaults.z);
+            SceneConfig.allowPlacement(saved); // Черновик с dpy-3 или прежней раскладкой модели.
+            display = saved.display;
+            z = saved.z;
 
             // Экран и z под катом: значения по умолчанию проверены на машине.
             placementHead = label(R.string.layer_display);

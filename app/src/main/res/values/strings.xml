@@ -35,8 +35,8 @@
     <string name="layer_display_2">2 · Фон приборки</string>
     <string name="layer_z">Слой z</string>
     <string name="layer_z_hint_dpy1">штатно: приборы 3, лампы 10 — держите ниже 10</string>
-    <string name="layer_z_hint_dpy1_single">штатно: лампы 9 и 10 — держите ниже 9</string>
-    <string name="layer_z_hint_dpy2_single">штатно: приборы и фон одним слоем z=3</string>
+    <string name="layer_z_hint_dpy1_single">на этой модели окно на dpy-1 делает приборку чёрной — выберите 2</string>
+    <string name="layer_z_hint_dpy2_single">штатно: приборы и фон одним слоем z=3 — выше 3, чтобы быть поверх</string>
     <string name="layer_z_hint_dpy1_background">штатно: приборы 3 — ниже 3, чтобы быть под ними</string>
     <string name="layer_z_hint_dpy2">штатный фон z=0 — выше 0, чтобы быть поверх</string>
     <string name="layer_geometry">Положение и размер, px</string>
