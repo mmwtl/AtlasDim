@@ -24,6 +24,8 @@ final class SceneConfig {
     final Layer clock = new Layer(Kind.CLOCK);
     final Layer fuel = new Layer(Kind.FUEL);
     final Layer background = new Layer(Kind.BACKGROUND);
+    /** Без проверок под модель (лампы, слои приборки): только для экспериментов. */
+    boolean unrestricted;
     boolean seconds;
     boolean plate = true;
     boolean grid = true;
@@ -89,7 +91,7 @@ final class SceneConfig {
             h = other.h;
         }
 
-        void validate() {
+        void validate(boolean unrestricted) {
             if (!enabled) {
                 return;
             }
@@ -100,6 +102,9 @@ final class SceneConfig {
             if (w <= 0 || w > WIDTH || h <= 0 || h > HEIGHT
                     || x < 0 || x > WIDTH - w || y < 0 || y > HEIGHT - h) {
                 throw new IllegalArgumentException(prefix + "окно должно помещаться в 1920×532");
+            }
+            if (unrestricted) {
+                return;
             }
             if (display == 1 && z >= LAMPS_Z) {
                 throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
@@ -158,6 +163,7 @@ final class SceneConfig {
         fuelPlate = other.fuelPlate;
         fuelMultiplier = other.fuelMultiplier;
         fuelOffset = other.fuelOffset;
+        unrestricted = other.unrestricted;
     }
 
     Layer layer(Kind kind) {
@@ -176,7 +182,7 @@ final class SceneConfig {
     void validate() {
         Layer[] layers = layers();
         for (Layer layer : layers) {
-            layer.validate();
+            layer.validate(unrestricted);
         }
         for (int i = 0; i < layers.length; i++) {
             for (int j = i + 1; j < layers.length; j++) {
@@ -207,7 +213,7 @@ final class SceneConfig {
                     .put("color", color).put("alpha", alpha).put("fill", fill)
                     .put("fuelLiters", fuelLiters).put("fuelFree", fuelFree)
                     .put("fuelPlate", fuelPlate).put("fuelMultiplier", (double) fuelMultiplier)
-                    .put("fuelOffset", (double) fuelOffset);
+                    .put("fuelOffset", (double) fuelOffset).put("unrestricted", unrestricted);
             for (Layer layer : layers()) {
                 json.put(layer.id(), layer.toJson());
             }
@@ -245,6 +251,7 @@ final class SceneConfig {
         config.fuelPlate = json.optBoolean("fuelPlate", config.fuelPlate);
         config.fuelMultiplier = (float) json.optDouble("fuelMultiplier", config.fuelMultiplier);
         config.fuelOffset = (float) json.optDouble("fuelOffset", config.fuelOffset);
+        config.unrestricted = json.optBoolean("unrestricted", config.unrestricted);
         for (Layer layer : config.layers()) {
             JSONObject item = json.optJSONObject(layer.id());
             if (item != null) {
@@ -252,6 +259,9 @@ final class SceneConfig {
             }
         }
         // Композиция, сохранённая до этих проверок, не должна ломать возврат после загрузки.
+        if (config.unrestricted) {
+            return config;
+        }
         if (SINGLE_LAYER) {
             config.background.enabled = false;
         }

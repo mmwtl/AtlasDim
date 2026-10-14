@@ -96,6 +96,9 @@
     <string name="link_password_missing">не задан</string>
     <string name="link_ports_hint">Порты демонов: часы — TCP 50210, фон — TCP 50211, топливо — TCP 50212. QNX: dpy-1 — приборы (z=3) и лампы (z=10), dpy-2 — фон приборки.</string>
 
+    <string name="limits_title">Ограничения</string>
+    <string name="limits_off">Снять ограничения экранов и z</string>
+    <string name="limits_hint">Для экспериментов: разрешает любой экран и z (в том числе выше ламп и под штатной приборкой) и фон на моделях, где он закрывает приборы. Остаются только границы окна и разные z на одном экране.</string>
     <string name="interface_title">Интерфейс приложения</string>
     <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>
     <string name="interface_scale">Масштаб</string>

@@ -63,6 +63,7 @@ public final class MainActivity extends ScaledActivity {
             SceneConfig.Kind.FUEL, SceneConfig.Kind.BACKGROUND};
     private static final int TAB_SYSTEM = 3;
     private static final int KEEP_REPORTS = 20;
+    private static final String KEY_UNRESTRICTED = "unrestricted";
     private static final int[] TAB_LABELS = {R.string.tab_clock, R.string.tab_fuel,
             R.string.tab_background, R.string.tab_system};
     private boolean ready;
@@ -78,6 +79,8 @@ public final class MainActivity extends ScaledActivity {
     private EditText host;
     private EditText password;
     private Switch boot;
+    private Switch unrestricted;
+    private TextView backgroundLocked;
     private Button diagButton;
     private TextView diagStatus;
     private LayerEditor clock;
@@ -253,12 +256,9 @@ public final class MainActivity extends ScaledActivity {
     private void buildBackgroundTab(LinearLayout page) {
         SharedPreferences prefs = prefs();
         background = new LayerEditor(page, previewConfig.background);
-        if (SceneConfig.SINGLE_LAYER) {
-            background.enabled.setChecked(false);
-            background.enabled.setEnabled(false);
-            ((LinearLayout) background.enabled.getParent()).addView(
-                    hint(getString(R.string.background_single_layer, Build.MODEL)), 1);
-        }
+        backgroundLocked = hint(getString(R.string.background_single_layer, Build.MODEL));
+        ((LinearLayout) background.enabled.getParent()).addView(backgroundLocked, 1);
+        lockBackground(prefs.getBoolean(KEY_UNRESTRICTED, false));
         LinearLayout picture = card(page, R.string.background_picture_title);
         HorizontalScrollView strip = new HorizontalScrollView(this);
         strip.setHorizontalScrollBarEnabled(false);
@@ -348,6 +348,14 @@ public final class MainActivity extends ScaledActivity {
         diagStatus = hint("");
         diagStatus.setVisibility(View.GONE);
         diag.addView(diagStatus);
+
+        LinearLayout limits = card(page, R.string.limits_title);
+        unrestricted = toggle(limits, R.string.limits_off, prefs.getBoolean(KEY_UNRESTRICTED, false));
+        unrestricted.setOnCheckedChangeListener((v, value) -> {
+            lockBackground(value);
+            refreshPreview();
+        });
+        limits.addView(hint(R.string.limits_hint));
 
         LinearLayout ui = card(page, R.string.interface_title);
         ui.addView(hint(R.string.interface_hint));
@@ -564,8 +572,19 @@ public final class MainActivity extends ScaledActivity {
         prefs().edit().putInt("tab", index).apply();
     }
 
+    /** На G426_J1 фон закрывает всю приборку: выключен, пока ограничения не сняты. */
+    private void lockBackground(boolean unrestricted) {
+        boolean locked = SceneConfig.SINGLE_LAYER && !unrestricted;
+        if (locked) {
+            background.enabled.setChecked(false);
+        }
+        background.enabled.setEnabled(!locked);
+        backgroundLocked.setVisibility(locked ? View.VISIBLE : View.GONE);
+    }
+
     private SceneConfig readConfig() {
         SceneConfig config = new SceneConfig();
+        config.unrestricted = unrestricted.isChecked();
         config.host = host.getText().toString().trim();
         String typed = password.getText().toString();
         config.password = typed.isEmpty() ? BuildConfig.QNX_PASSWORD : typed;
@@ -692,6 +711,7 @@ public final class MainActivity extends ScaledActivity {
         edit.putString("host", host.getText().toString().trim());
         edit.putString("password", password.getText().toString());
         edit.putBoolean(SceneService.KEY_BOOT, boot.isChecked());
+        edit.putBoolean(KEY_UNRESTRICTED, unrestricted.isChecked());
         clock.save(edit);
         fuel.save(edit);
         background.save(edit);
@@ -898,7 +918,9 @@ public final class MainActivity extends ScaledActivity {
             SceneConfig.Layer saved = new SceneConfig.Layer(defaults.kind);
             saved.display = parse(prefs.getString(key + "display", null), defaults.display);
             saved.z = parse(prefs.getString(key + "z", null), defaults.z);
-            SceneConfig.allowPlacement(saved); // Черновик с dpy-3 или прежней раскладкой модели.
+            if (saved.display < 1 || saved.display > 2 || !prefs.getBoolean(KEY_UNRESTRICTED, false)) {
+                SceneConfig.allowPlacement(saved); // Черновик с dpy-3 или прежней раскладкой модели.
+            }
             display = saved.display;
             z = saved.z;
 
