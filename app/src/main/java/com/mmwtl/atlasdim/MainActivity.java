@@ -328,13 +328,22 @@ public final class MainActivity extends ScaledActivity {
         boot = toggle(link, R.string.link_boot, prefs.getBoolean(SceneService.KEY_BOOT, true));
         boot.setContentDescription("Автозапуск после загрузки");
         link.addView(hint(R.string.link_background_hint));
-        link.addView(label(R.string.link_manual));
-        host = field(link, R.string.link_host, prefs.getString("host", BuildConfig.QNX_HOST),
+        // Хост и пароль под катом: обычно хватает значений из сборки.
+        TextView manualHead = label(R.string.link_manual);
+        manualHead.setClickable(true);
+        manualHead.setPadding(0, dp(8), 0, dp(8));
+        link.addView(manualHead);
+        LinearLayout manual = column();
+        link.addView(manual);
+        host = field(manual, R.string.link_host, prefs.getString("host", BuildConfig.QNX_HOST),
                 InputType.TYPE_CLASS_TEXT);
-        password = field(link, R.string.link_password, prefs.getString("password", ""),
+        password = field(manual, R.string.link_password, prefs.getString("password", ""),
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         password.setHint(built ? R.string.link_password_built : R.string.link_password_missing);
-        link.addView(hint(R.string.link_ports_hint));
+        manual.addView(hint(R.string.link_ports_hint));
+        setExpanded(manualHead, manual, !built);
+        manualHead.setOnClickListener(v ->
+                setExpanded(manualHead, manual, manual.getVisibility() != View.VISIBLE));
 
         LinearLayout diag = card(page, R.string.diag_title);
         diag.addView(hint(R.string.diag_hint));
@@ -392,6 +401,11 @@ public final class MainActivity extends ScaledActivity {
         Ui.topMargin(donate, 12);
         donate.setOnClickListener(v -> DonateDialog.show(this));
         support.addView(donate);
+    }
+
+    private void setExpanded(TextView head, View body, boolean expanded) {
+        head.setText((expanded ? "▾ " : "▸ ") + getString(R.string.link_manual));
+        body.setVisibility(expanded ? View.VISIBLE : View.GONE);
     }
 
     /** Диагностика в фоне: связь с QNX и состояние приборки, только чтение. */
