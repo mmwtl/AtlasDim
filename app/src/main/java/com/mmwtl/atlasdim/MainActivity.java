@@ -2,6 +2,8 @@ package com.mmwtl.atlasdim;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -30,10 +32,16 @@ import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -71,6 +79,8 @@ public final class MainActivity extends ScaledActivity {
     private EditText password;
     private Switch autoStart;
     private Switch boot;
+    private Button diagButton;
+    private TextView diagStatus;
     private LayerEditor clock;
     private LayerEditor fuel;
     private LayerEditor background;
@@ -326,6 +336,16 @@ public final class MainActivity extends ScaledActivity {
         password.setHint(built ? R.string.link_password_built : R.string.link_password_missing);
         link.addView(hint(R.string.link_ports_hint));
 
+        LinearLayout diag = card(page, R.string.diag_title);
+        diag.addView(hint(R.string.diag_hint));
+        diagButton = Ui.button(this, R.string.diag_button);
+        Ui.topMargin(diagButton, 12);
+        diagButton.setOnClickListener(v -> runDiagnostics());
+        diag.addView(diagButton);
+        diagStatus = hint("");
+        diagStatus.setVisibility(View.GONE);
+        diag.addView(diagStatus);
+
         LinearLayout ui = card(page, R.string.interface_title);
         ui.addView(hint(R.string.interface_hint));
         LinearLayout scaleHead = new LinearLayout(this);
@@ -372,6 +392,84 @@ public final class MainActivity extends ScaledActivity {
         Ui.topMargin(donate, 12);
         donate.setOnClickListener(v -> DonateDialog.show(this));
         support.addView(donate);
+    }
+
+    /** Диагностика в фоне: связь с QNX и состояние приборки, только чтение. */
+    private void runDiagnostics() {
+        Diagnostics.Input input = new Diagnostics.Input();
+        input.version = version();
+        input.host = host.getText().toString().trim();
+        if (input.host.isEmpty()) {
+            input.host = BuildConfig.QNX_HOST;
+        }
+        String typed = password.getText().toString();
+        input.password = typed.isEmpty() ? BuildConfig.QNX_PASSWORD : typed;
+        input.active = SceneService.isActive(this);
+        input.serviceRunning = SceneService.isRunning();
+        input.state = status.getText().toString();
+        try {
+            input.config = readConfig();
+        } catch (IllegalArgumentException e) {
+            input.config = null; // Черновик с ошибкой — слои в отчёт не попадут.
+        }
+        diagButton.setEnabled(false);
+        diagStatus.setVisibility(View.VISIBLE);
+        diagStatus.setText(R.string.diag_running);
+        new Thread(() -> {
+            String report = Diagnostics.run(input,
+                    text -> runOnUiThread(() -> diagStatus.setText(text)));
+            Log.i("AtlasDim", report);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                diagButton.setEnabled(true);
+                diagStatus.setText(Diagnostics.summary(report));
+                showReport(report);
+            });
+        }, "AtlasDim-diag").start();
+    }
+
+    private void showReport(String report) {
+        TextView text = Ui.text(this, report, 12, Ui.TEXT);
+        text.setTypeface(Typeface.MONOSPACE);
+        text.setTextIsSelectable(true);
+        text.setGravity(Gravity.START | Gravity.TOP);
+        text.setPadding(dp(20), dp(8), dp(20), dp(8));
+        HorizontalScrollView wide = new HorizontalScrollView(this);
+        wide.addView(text);
+        ScrollView body = new ScrollView(this);
+        body.addView(wide);
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.diag_title)
+                .setView(body)
+                .setPositiveButton(R.string.diag_copy, (d, w) -> {
+                    ClipboardManager clipboard = getSystemService(ClipboardManager.class);
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Atlas Dim", report));
+                    Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton(R.string.diag_save, (d, w) -> saveReport(report))
+                .setNegativeButton(R.string.donate_close, null)
+                .show();
+        sized(dialog);
+    }
+
+    private void saveReport(String report) {
+        File dir = new File(getExternalFilesDir(null), "diagnostics");
+        File file = new File(dir, "atlasdim-diag-" + new SimpleDateFormat("yyyyMMdd-HHmmss",
+                Locale.US).format(new Date()) + ".txt");
+        try {
+            if (!dir.isDirectory() && !dir.mkdirs()) {
+                throw new IOException("нет папки " + dir);
+            }
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                out.write(report.getBytes(StandardCharsets.UTF_8));
+            }
+            Toast.makeText(this, getString(R.string.diag_saved, file.getPath()),
+                    Toast.LENGTH_LONG).show();
+        } catch (IOException e) {
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private static String scaleText(int tenths) {

@@ -98,6 +98,14 @@
     <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>
     <string name="interface_scale">Масштаб</string>
 
+    <string name="diag_title">Диагностика</string>
+    <string name="diag_hint">Проверяет связь с QNX и по telnet снимает состояние приборки: дисплеи и окна QNX Screen, процессы приборки, наши демоны и их логи. Только чтение — на QNX ничего не меняется.</string>
+    <string name="diag_button">Диагностика</string>
+    <string name="diag_running">Запуск…</string>
+    <string name="diag_copy">Копировать</string>
+    <string name="diag_copied">Отчёт скопирован</string>
+    <string name="diag_save">Сохранить</string>
+    <string name="diag_saved">Отчёт сохранён: %1$s</string>
     <string name="about_title">О приложении</string>
     <string name="about_text">Atlas Dim %1$s — свои часы, топливо и фон на приборке ГУ G636 через QNX.</string>
 
