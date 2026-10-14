@@ -1,3 +1,4 @@
+import java.util.Locale
 import java.util.Properties
 
 plugins {
@@ -5,7 +6,39 @@ plugins {
 }
 
 val appVersionCode = 21
-val appVersionName = "0.15.0"
+val baseVersionName = "0.15.0"
+
+// Как в AtlasCodecFix: вне main к версии и имени APK дописывается ветка.
+fun currentGitBranch(): String {
+    return runCatching {
+        val process = ProcessBuilder("git", "branch", "--show-current")
+            .directory(rootProject.projectDir)
+            .redirectErrorStream(true)
+            .start()
+        val branch = process.inputStream.bufferedReader().use { it.readText().trim() }
+        process.waitFor()
+        branch
+    }.getOrDefault("")
+}
+
+val buildBranch = providers.gradleProperty("branch.name").orNull
+    ?: System.getenv("GIT_BRANCH")
+        ?.removePrefix("refs/heads/")
+        ?.removePrefix("refs/remotes/")
+        ?.removePrefix("origin/")
+    ?: currentGitBranch()
+val sanitizedBranch = buildBranch
+    .ifBlank { "detached" }
+    .replace(Regex("[^A-Za-z0-9._-]+"), "-")
+    .trim('-')
+    .lowercase(Locale.ROOT)
+    .take(32)
+    .ifBlank { "detached" }
+val appVersionName = if (buildBranch == "main") {
+    baseVersionName
+} else {
+    "$baseVersionName-$sanitizedBranch"
+}
 
 // Штатный общедоступный пароль root QNX ГУ G636; переопределяется qnx.password
 // в local.properties или QNX_PASS.
