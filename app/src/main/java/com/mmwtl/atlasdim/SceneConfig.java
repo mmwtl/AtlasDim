@@ -1,5 +1,7 @@
 package com.mmwtl.atlasdim;
 
+import android.os.Build;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -7,8 +9,13 @@ import org.json.JSONObject;
 final class SceneConfig {
     static final int WIDTH = 1920;
     static final int HEIGHT = 532;
+    /**
+     * G426_J1 (смежная модель): приборы и фон — одно окно на dpy-2 с z=3, фон под
+     * приборами невозможен; на dpy-1 второе окно ламп с z=9. RESEARCH.md п. 9.
+     */
+    static final boolean SINGLE_LAYER = "G426_J1".equals(Build.MODEL);
     /** z контрольных ламп EarlyTT на dpy-1: наши окна всегда ниже. */
-    static final int LAMPS_Z = 10;
+    static final int LAMPS_Z = SINGLE_LAYER ? 9 : 10;
     /** z штатного слоя приборов cluster-hmi на dpy-1: фон всегда ниже. */
     static final int CLUSTER_Z = 3;
     // Штатные для наших машин; пароль приходит из local.properties при сборке.
@@ -51,7 +58,7 @@ final class SceneConfig {
             background = kind == Kind.BACKGROUND;
             enabled = kind == Kind.CLOCK;
             display = background ? 2 : 1;
-            z = background ? 0 : kind == Kind.CLOCK ? 9 : 8;
+            z = background ? 0 : kind == Kind.CLOCK ? LAMPS_Z - 1 : LAMPS_Z - 2;
             x = kind == Kind.FUEL ? WIDTH - 300 : 0;
             y = background ? 0 : 482;
             w = background ? WIDTH : kind == Kind.CLOCK ? 100 : 300;
@@ -97,7 +104,12 @@ final class SceneConfig {
                 throw new IllegalArgumentException(prefix + "на dpy-3 окно должно помещаться по ширине в 1440 px");
             }
             if (display == 1 && z >= LAMPS_Z) {
-                throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже 10 (лампы)");
+                throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
+                        + LAMPS_Z + " (лампы)");
+            }
+            if (background && SINGLE_LAYER) {
+                throw new IllegalArgumentException("Фон на " + Build.MODEL
+                        + " недоступен: приборы и фон штатно рисуются одним слоем");
             }
             if (background && display == 1 && z >= CLUSTER_Z) {
                 throw new IllegalArgumentException("Фон на dpy-1: z < 3, чтобы не закрыть штатные приборы");
@@ -199,6 +211,11 @@ final class SceneConfig {
         }
     }
 
+    /** z на dpy-1 не выше ламп этой модели; иначе — значение по умолчанию. */
+    static int allowedZ(Layer layer) {
+        return layer.display == 1 && layer.z >= LAMPS_Z ? new Layer(layer.kind).z : layer.z;
+    }
+
     static SceneConfig fromJson(String text) throws JSONException {
         JSONObject json = new JSONObject(text);
         SceneConfig config = new SceneConfig();
@@ -220,6 +237,12 @@ final class SceneConfig {
             if (item != null) {
                 layer.fromJson(item);
             }
+        }
+        // Композиция, сохранённая до этих проверок, не должна ломать возврат после загрузки.
+        if (SINGLE_LAYER) {
+            config.background.enabled = false;
+            config.clock.z = allowedZ(config.clock);
+            config.fuel.z = allowedZ(config.fuel);
         }
         return config;
     }
