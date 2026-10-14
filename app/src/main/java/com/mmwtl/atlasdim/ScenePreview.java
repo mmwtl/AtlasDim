@@ -18,7 +18,6 @@ final class ScenePreview extends View {
     static final int FUEL_COLOR = 0xffa78bfa;
     private static final int SNAP = 4;
     private static final int EDGE = 16;
-    private final boolean central;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private SceneConfig config = new SceneConfig();
     private boolean valid = true;
@@ -37,11 +36,9 @@ final class ScenePreview extends View {
         void onMoved(SceneConfig.Layer layer, boolean done);
     }
 
-    ScenePreview(Context context, boolean central) {
+    ScenePreview(Context context) {
         super(context);
-        this.central = central;
-        setContentDescription(central ? "Предпросмотр центрального экрана"
-                : "Предпросмотр приборки 1920 на 532");
+        setContentDescription("Предпросмотр приборки 1920 на 532");
     }
 
     void setEditListener(EditListener listener) {
@@ -68,23 +65,22 @@ final class ScenePreview extends View {
     }
 
     private float scale() {
-        return getWidth() / (central ? 1440f : 1920f);
+        return getWidth() / (float) SceneConfig.WIDTH;
     }
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         int width = MeasureSpec.getSize(widthSpec);
-        setMeasuredDimension(width, Math.round(width * (central ? 1920f / 1440 : 532f / 1920)));
+        setMeasuredDimension(width, Math.round(width * (float) SceneConfig.HEIGHT / SceneConfig.WIDTH));
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.save();
-        canvas.scale(getWidth() / (central ? 1440f : 1920f),
-                getHeight() / (central ? 1920f : 532f));
-        int width = central ? 1440 : 1920;
-        int height = central ? 1920 : 532;
+        canvas.scale(scale(), getHeight() / (float) SceneConfig.HEIGHT);
+        int width = SceneConfig.WIDTH;
+        int height = SceneConfig.HEIGHT;
         paint.setStyle(Paint.Style.FILL);
         paint.setPathEffect(null);
         for (int y = 0; y < height; y += 40) {
@@ -125,11 +121,11 @@ final class ScenePreview extends View {
     }
 
     private static int rank(int display) {
-        return display == 2 ? 0 : display == 1 ? 1 : 2;
+        return display == 2 ? 0 : 1;
     }
 
     private boolean here(SceneConfig.Layer layer) {
-        return layer.enabled && (layer.display == 3) == central;
+        return layer.enabled;
     }
 
     private void drawLayer(Canvas canvas, SceneConfig.Layer layer) {
@@ -170,10 +166,10 @@ final class ScenePreview extends View {
         float tw = paint.measureText(text) + 12 * px;
         float th = 20 * px;
         float ty = layer.y >= th ? layer.y - th : layer.y + layer.h;
-        if (ty + th > (central ? 1920 : 532)) {
+        if (ty + th > SceneConfig.HEIGHT) {
             ty = layer.y;
         }
-        float tx = Math.min(layer.x, (central ? 1440 : 1920) - tw);
+        float tx = Math.min(layer.x, SceneConfig.WIDTH - tw);
         canvas.drawRoundRect(new RectF(tx, ty, tx + tw, ty + th), 4 * px, 4 * px, paint);
         paint.setColor(Ui.BACKGROUND);
         canvas.drawText(text, tx + 6 * px, ty + 14.5f * px, paint);
@@ -247,7 +243,7 @@ final class ScenePreview extends View {
 
     private void drag(int dx, int dy) {
         SceneConfig.Layer l = dragging;
-        int maxW = l.display == 3 ? 1440 : SceneConfig.WIDTH;
+        int maxW = SceneConfig.WIDTH;
         int maxH = SceneConfig.HEIGHT;
         if (resizing) {
             l.w = snap(clamp(start[2] + dx, 40, maxW - l.x), maxW - l.x);

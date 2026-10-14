@@ -8,7 +8,6 @@
     <string name="tab_system">Система</string>
 
     <string name="preview_title">Приборка · 1920×532</string>
-    <string name="preview_central">Центральный экран · dpy-3</string>
     <string name="preview_hint">Перетащите окно пальцем, угол — изменить размер. %1$s · %2$s · %3$s</string>
     <string name="preview_invalid">%1$s · показан последний корректный вариант</string>
     <string name="layer_on">%1$s dpy-%2$d z=%3$d</string>
@@ -33,14 +32,12 @@
     <string name="layer_display">Экран QNX</string>
     <string name="layer_display_1">1 · Приборы</string>
     <string name="layer_display_2">2 · Фон приборки</string>
-    <string name="layer_display_3">3 · Центр</string>
     <string name="layer_z">Слой z</string>
     <string name="layer_z_hint_dpy1">штатно: приборы 3, лампы 10 — держите ниже 10</string>
     <string name="layer_z_hint_dpy1_single">штатно: лампы 9 и 10 — держите ниже 9</string>
     <string name="layer_z_hint_dpy2_single">штатно: приборы и фон одним слоем z=3</string>
     <string name="layer_z_hint_dpy1_background">штатно: приборы 3 — ниже 3, чтобы быть под ними</string>
     <string name="layer_z_hint_dpy2">штатный фон z=0 — выше 0, чтобы быть поверх</string>
-    <string name="layer_z_hint_dpy3">z штатных окон центра не сняты</string>
     <string name="layer_geometry">Положение и размер, px</string>
     <string name="layer_width">Ш</string>
     <string name="layer_height">В</string>
@@ -96,7 +93,7 @@
     <string name="link_password">Пароль root</string>
     <string name="link_password_built">из сборки</string>
     <string name="link_password_missing">не задан</string>
-    <string name="link_ports_hint">Порты демонов: часы — TCP 50210, фон — TCP 50211, топливо — TCP 50212. QNX: dpy-1 — приборы (z=3) и лампы (z=10), dpy-2 — фон приборки, dpy-3 — центральный экран.</string>
+    <string name="link_ports_hint">Порты демонов: часы — TCP 50210, фон — TCP 50211, топливо — TCP 50212. QNX: dpy-1 — приборы (z=3) и лампы (z=10), dpy-2 — фон приборки.</string>
 
     <string name="interface_title">Интерфейс приложения</string>
     <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>

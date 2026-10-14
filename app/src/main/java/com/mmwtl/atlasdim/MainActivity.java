@@ -72,8 +72,6 @@ public final class MainActivity extends ScaledActivity {
     private ScrollView scroll;
     private View stage;
     private ScenePreview preview;
-    private ScenePreview centralPreview;
-    private View centralBlock;
     private TextView previewStatus;
     private TextView status;
     private TextView pill;
@@ -207,22 +205,12 @@ public final class MainActivity extends ScaledActivity {
             head.addView(legend(kind));
         }
         box.addView(head);
-        preview = new ScenePreview(this, false);
+        preview = new ScenePreview(this);
         box.addView(rounded(preview), margin(8));
-        LinearLayout central = column();
-        central.setVisibility(View.GONE);
-        central.addView(Ui.text(this, R.string.preview_central, 13, Ui.TEXT_SECONDARY),
-                margin(10));
-        centralPreview = new ScenePreview(this, true);
-        LinearLayout.LayoutParams centralSize = new LinearLayout.LayoutParams(dp(150), -2);
-        centralSize.topMargin = dp(6);
-        central.addView(rounded(centralPreview), centralSize);
-        box.addView(central);
-        centralBlock = central;
         previewStatus = Ui.text(this, "", 13, Ui.TEXT_SECONDARY);
         previewStatus.setLineSpacing(0, 1.1f);
         box.addView(previewStatus, margin(6));
-        ScenePreview.EditListener editListener = new ScenePreview.EditListener() {
+        preview.setEditListener(new ScenePreview.EditListener() {
             @Override public void onSelect(SceneConfig.Kind kind) {
                 showTab(Arrays.asList(KINDS).indexOf(kind));
             }
@@ -230,9 +218,7 @@ public final class MainActivity extends ScaledActivity {
             @Override public void onMoved(SceneConfig.Layer layer, boolean done) {
                 editor(layer.kind).setGeometry(layer);
             }
-        };
-        preview.setEditListener(editListener);
-        centralPreview.setEditListener(editListener);
+        });
         stage = box;
         return box;
     }
@@ -573,7 +559,6 @@ public final class MainActivity extends ScaledActivity {
         stage.setVisibility(index == TAB_SYSTEM ? View.GONE : View.VISIBLE);
         if (index < KINDS.length) {
             preview.select(KINDS[index]);
-            centralPreview.select(KINDS[index]);
         }
         scroll.scrollTo(0, 0);
         prefs().edit().putInt("tab", index).apply();
@@ -629,12 +614,6 @@ public final class MainActivity extends ScaledActivity {
             previewStatus.setTextColor(Ui.ERROR);
         }
         preview.update(previewConfig, valid);
-        centralPreview.update(previewConfig, valid);
-        boolean central = false;
-        for (SceneConfig.Layer layer : previewConfig.layers()) {
-            central |= layer.enabled && layer.display == 3;
-        }
-        centralBlock.setVisibility(central ? View.VISIBLE : View.GONE);
         if (SceneService.isActive(this) && !dirty) {
             dirty = true;
             setPill(getString(R.string.pill_dirty), PENDING);
@@ -889,7 +868,7 @@ public final class MainActivity extends ScaledActivity {
     private final class LayerEditor {
         final String key;
         final Switch enabled;
-        final TextView[] displays = new TextView[3];
+        final TextView[] displays = new TextView[2];
         final TextView zValue;
         final TextView zHint;
         final EditText x;
@@ -916,14 +895,17 @@ public final class MainActivity extends ScaledActivity {
             card.addView(port);
             display = parse(prefs.getString(key + "display", null), defaults.display);
             z = parse(prefs.getString(key + "z", null), defaults.z);
+            if (display < 1 || display > 2) {
+                display = defaults.display; // Черновик с убранным центральным экраном (dpy-3).
+            }
             if (display == 1 && z >= SceneConfig.LAMPS_Z) {
                 z = defaults.z; // Черновик с прежним пределом ламп (z=9 на G426_J1).
             }
 
             card.addView(label(R.string.layer_display));
             LinearLayout segments = new LinearLayout(MainActivity.this);
-            int[] names = {R.string.layer_display_1, R.string.layer_display_2, R.string.layer_display_3};
-            for (int i = 0; i < 3; i++) {
+            int[] names = {R.string.layer_display_1, R.string.layer_display_2};
+            for (int i = 0; i < names.length; i++) {
                 int value = i + 1;
                 TextView segment = Ui.segment(MainActivity.this, names[i]);
                 segment.setContentDescription(defaults.label() + ": дисплей " + value);
@@ -970,10 +952,10 @@ public final class MainActivity extends ScaledActivity {
             } else {
                 Ui.addSegment(quick, chip(R.string.place_bottom_left,
                         () -> place(40, SceneConfig.HEIGHT - num(h) - 20, -1, -1)));
-                Ui.addSegment(quick, chip(R.string.place_center, () -> place((maxWidth() - num(w)) / 2,
+                Ui.addSegment(quick, chip(R.string.place_center, () -> place((SceneConfig.WIDTH - num(w)) / 2,
                         (SceneConfig.HEIGHT - num(h)) / 2, -1, -1)));
                 Ui.addSegment(quick, chip(R.string.place_top_right,
-                        () -> place(maxWidth() - num(w) - 40, 20, -1, -1)));
+                        () -> place(SceneConfig.WIDTH - num(w) - 40, 20, -1, -1)));
             }
             Ui.addSegment(quick, chip(R.string.place_reset, this::reset));
             card.addView(quick, margin(10));
@@ -989,9 +971,6 @@ public final class MainActivity extends ScaledActivity {
             setGeometry(initial);
         }
 
-        private int maxWidth() {
-            return display == 3 ? 1440 : SceneConfig.WIDTH;
-        }
 
         private int num(EditText field) {
             return parse(field.getText().toString(), 0);
@@ -1021,13 +1000,12 @@ public final class MainActivity extends ScaledActivity {
 
         /** Сегменты экрана и подсказка о штатных z именно на выбранном экране. */
         private void paintSegments() {
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < displays.length; i++) {
                 Ui.setSegmentSelected(MainActivity.this, displays[i], display == i + 1);
             }
             boolean single = SceneConfig.SINGLE_LAYER;
             zHint.setText(display == 2 ? single ? R.string.layer_z_hint_dpy2_single
                             : R.string.layer_z_hint_dpy2
-                    : display == 3 ? R.string.layer_z_hint_dpy3
                     : defaults.background ? R.string.layer_z_hint_dpy1_background
                     : single ? R.string.layer_z_hint_dpy1_single
                     : R.string.layer_z_hint_dpy1);

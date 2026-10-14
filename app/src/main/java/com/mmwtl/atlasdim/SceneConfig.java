@@ -93,15 +93,12 @@ final class SceneConfig {
                 return;
             }
             String prefix = label() + ": ";
-            if (display < 1 || display > 3 || z < -100 || z > 100) {
-                throw new IllegalArgumentException(prefix + "дисплей 1…3, z −100…100");
+            if (display < 1 || display > 2 || z < -100 || z > 100) {
+                throw new IllegalArgumentException(prefix + "дисплей 1…2, z −100…100");
             }
             if (w <= 0 || w > WIDTH || h <= 0 || h > HEIGHT
                     || x < 0 || x > WIDTH - w || y < 0 || y > HEIGHT - h) {
                 throw new IllegalArgumentException(prefix + "окно должно помещаться в 1920×532");
-            }
-            if (display == 3 && x + w > 1440) {
-                throw new IllegalArgumentException(prefix + "на dpy-3 окно должно помещаться по ширине в 1440 px");
             }
             if (display == 1 && z >= LAMPS_Z) {
                 throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
