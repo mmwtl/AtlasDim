@@ -42,10 +42,11 @@ public final class SceneTestRunner extends Instrumentation {
             backgroundOnly();
             liveUpdate();
             repeatSessions();
+            launchedDaemons();
             fuelWindow();
             activityLifecycle();
             bootAndRetry();
-            result.putString("stream", "\n" + report + "ALL 13 CHECKS PASSED\n");
+            result.putString("stream", "\n" + report + "ALL 14 CHECKS PASSED\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable e) {
             result.putString("stream", "\n" + report + android.util.Log.getStackTraceString(e));
@@ -353,14 +354,18 @@ public final class SceneTestRunner extends Instrumentation {
                 session.stop();
             }
             check(bg.closed.await(2, TimeUnit.SECONDS), "explicit stop closes background");
+            byte[] last = decodeFrame(bg.frame);
+            check(bg.frames == 2 && last.length == 1920 * 532 * 4
+                    && Arrays.equals(last, new byte[last.length]), "transparent frame before close");
         }
-        pass("background-only mode and explicit stop");
+        pass("background-only mode and explicit stop with a transparent frame");
     }
 
     private void liveUpdate() throws Exception {
         try (FakeDaemon bg = new FakeDaemon(50211, 0, false)) {
             SceneConfig config = local();
             config.clock.enabled = false;
+            String daemons = DimDaemon.signature(config);
             SceneSession session = new SceneSession(getTargetContext(), config, s -> { });
             session.start();
             try {
@@ -375,7 +380,7 @@ public final class SceneTestRunner extends Instrumentation {
                 config = local();
                 config.clock.enabled = false;
                 config.background.z = 1;
-                check(!session.update(config) && !session.sameDaemons(config),
+                check(!session.update(config) && !DimDaemon.signature(config).equals(daemons),
                         "z change needs a daemon restart");
             } finally {
                 session.stop();
@@ -401,6 +406,46 @@ public final class SceneTestRunner extends Instrumentation {
             }
         }
         pass("three repeated clock-only sessions");
+    }
+
+    private void launchedDaemons() throws Exception {
+        android.content.SharedPreferences prefs = prefs();
+        java.util.Map<String, ?> saved = prefs.getAll();
+        SceneConfig config = local();
+        config.background.enabled = false;
+        // С паролем: telnet на 127.0.0.1:23 отказывает, окна возможны только без него.
+        config.password = "test";
+        List<String> states = new java.util.concurrent.CopyOnWriteArrayList<>();
+        try {
+            DimDaemon.remember(getTargetContext(), config);
+            try (FakeDaemon clock = new FakeDaemon(50210, 0, false)) {
+                SceneSession session = new SceneSession(getTargetContext(), config, states::add);
+                session.start();
+                try {
+                    await(() -> clock.frames > 0, 4000, "launched daemon reused");
+                } finally {
+                    session.stop();
+                }
+                check(clock.closed.await(3, TimeUnit.SECONDS), "window closed, daemon kept");
+            }
+            check(DimDaemon.launched(getTargetContext(), config), "daemons stay remembered");
+            check(states.stream().noneMatch(s -> s.contains("telnet") || s.contains("останавливаю")),
+                    "no telnet when reusing and stopping");
+            states.clear();
+            long started = android.os.SystemClock.elapsedRealtime();
+            SceneSession session = new SceneSession(getTargetContext(), config, states::add);
+            session.start();
+            await(() -> states.stream().anyMatch(s -> s.startsWith("Ошибка")), 6000,
+                    "missing daemon falls back to telnet");
+            session.stop();
+            check(android.os.SystemClock.elapsedRealtime() - started < 4000
+                    && states.stream().anyMatch(s -> s.contains("telnet")),
+                    "no 10 s wait for a missing daemon");
+            check(!DimDaemon.launched(getTargetContext(), config), "telnet attempt forgets daemons");
+        } finally {
+            restore(saved);
+        }
+        pass("remembered daemons take windows without telnet; missing ones fall back quickly");
     }
 
     private void fuelWindow() throws Exception {

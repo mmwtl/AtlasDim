@@ -20,7 +20,8 @@ import java.util.function.Consumer;
 /**
  * Держит композицию на приборке без открытой Activity. Применённые настройки лежат
  * в prefs ({@code scene}, {@code active}); по ним сервис поднимается и после загрузки ГУ.
- * Отказ или потеря связи — повтор с нарастающей паузой, пока композиция нужна.
+ * Отказ или потеря связи — повтор с нарастающей паузой, пока композиция нужна; демоны
+ * при этом не останавливаются, повтор сначала подключает окна к ним без telnet.
  */
 public final class SceneService extends Service {
     private static final String TAG = "AtlasDim";
@@ -147,20 +148,18 @@ public final class SceneService extends Service {
         } else {
             stopFuel();
         }
-        boolean reuse = false;
         if (session != null) {
             // Только рисунок — кадр уходит в открытые окна, демоны не трогаем.
             if (session.update(config)) {
                 setState("Рисунок обновлён без перезапуска");
                 return;
             }
-            reuse = session.sameDaemons(config);
             SceneSession old = session;
             session = null;
-            old.stop(old.sameQnx(config));
+            old.stop(!old.sameQnx(config));
         }
         Watch watch = new Watch();
-        session = watch.session = new SceneSession(this, config, reuse, watch);
+        session = watch.session = new SceneSession(this, config, watch);
         running++;
         setState("Запускаю композицию…");
         session.start();
@@ -212,7 +211,7 @@ public final class SceneService extends Service {
         main.removeCallbacks(retry);
         stopFuel();
         if (session != null) {
-            session.stop();
+            session.stop(true);
             session = null;
         } else if (running == 0) {
             setState("Не подключено");

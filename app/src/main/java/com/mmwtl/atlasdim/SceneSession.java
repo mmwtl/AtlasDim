@@ -18,6 +18,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 final class SceneSession {
     private static final String TAG = "AtlasDim";
     private static final Object SESSION_LOCK = new Object();
+    private static final int READ_TIMEOUT_MS = 15000;
     private final Context context;
     /** Заменяется целиком в {@link #update}; окна читают его заново на каждом такте. */
     private volatile SceneConfig config;
@@ -28,10 +29,11 @@ final class SceneSession {
     private volatile boolean live;
     private volatile String lostReason;
     private volatile QnxShell shell;
-    /** Сессия заменяется новой: демоны оставить, новая сессия сама их сверит. */
-    private volatile boolean keepDaemons;
-    /** Демоны прежней сессии подходят как есть — сначала подключиться без telnet. */
-    private final boolean reuse;
+    /**
+     * «Убрать всё» или смена QNX: после окон остановить и демоны. Иначе (обрыв,
+     * замена сессии) демоны остаются и без клиента не показывают окна.
+     */
+    private volatile boolean removeDaemons;
     private Thread worker;
 
     interface Listener {
@@ -43,14 +45,9 @@ final class SceneSession {
     }
 
     SceneSession(Context context, SceneConfig config, Listener listener) {
-        this(context, config, false, listener);
-    }
-
-    SceneSession(Context context, SceneConfig config, boolean reuse, Listener listener) {
         this.context = context.getApplicationContext();
         Backgrounds.init(context);
         this.config = new SceneConfig(config);
-        this.reuse = reuse;
         this.listener = listener;
     }
 
@@ -90,33 +87,11 @@ final class SceneSession {
         return true;
     }
 
-    /**
-     * Процессы демонов (хост, набор окон, display, z) подходят для next;
-     * окна можно переоткрыть с новой геометрией без telnet.
-     */
-    boolean sameDaemons(SceneConfig next) {
-        SceneConfig current = config;
-        if (!running || !live || !sameQnx(next)) {
-            return false;
-        }
-        for (SceneConfig.Kind kind : SceneConfig.Kind.values()) {
-            if (!sameDaemon(next.layer(kind), current.layer(kind))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     /** Тот же QNX и пароль: новая сессия сама сверит демоны, гасить их заранее не нужно. */
     boolean sameQnx(SceneConfig next) {
         SceneConfig current = config;
         return !next.password.isEmpty() && next.host.equals(current.host)
                 && next.password.equals(current.password);
-    }
-
-    private static boolean sameDaemon(SceneConfig.Layer a, SceneConfig.Layer b) {
-        return a.enabled == b.enabled
-                && (!a.enabled || (a.display == b.display && a.z == b.z));
     }
 
     private static boolean sameWindow(SceneConfig.Layer a, SceneConfig.Layer b) {
@@ -127,21 +102,26 @@ final class SceneSession {
                 && a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h);
     }
 
-    /** Закрытие сокетов прерывает также зависшее чтение/запись, не только sleep. */
+    /** Закрывает окна; демоны на QNX остаются для следующей сессии. */
     void stop() {
         stop(false);
     }
 
-    /** keepDaemons — сессию сменит новая: окна закрыть, процессы на QNX не трогать. */
-    void stop(boolean keepDaemons) {
-        if (keepDaemons) {
-            this.keepDaemons = true;
+    /**
+     * Подключение прерывается сразу закрытием сокетов. Открытые окна закрывает
+     * поток сессии: прозрачный кадр, затем сокет (поток в это время только спит).
+     */
+    void stop(boolean removeDaemons) {
+        if (removeDaemons) {
+            this.removeDaemons = true;
         }
         running = false;
-        live = false;
-        for (Link link : links) {
-            link.close();
+        if (!live) {
+            for (Link link : links) {
+                link.close();
+            }
         }
+        live = false;
         QnxShell current = shell;
         if (current != null) {
             current.close();
@@ -164,9 +144,10 @@ final class SceneSession {
         try {
             config.validate();
             boolean opened = false;
-            if (reuse && managed) {
+            // Демоны с теми же display/z уже запускались: сначала окна без telnet.
+            if (managed && DimDaemon.launched(context, config)) {
                 try {
-                    openLinks();
+                    openLinks(true);
                     opened = true;
                 } catch (IOException e) {
                     checkRunning();
@@ -177,6 +158,7 @@ final class SceneSession {
             if (!opened) {
                 if (managed) {
                     state("Подключение к QNX по telnet…");
+                    DimDaemon.forget(context);
                     try (QnxShell qnx = QnxShell.open(config.host, "root", config.password)) {
                         shell = qnx;
                         checkRunning();
@@ -184,8 +166,9 @@ final class SceneSession {
                     } finally {
                         shell = null;
                     }
+                    DimDaemon.remember(context, config);
                 }
-                openLinks();
+                openLinks(false);
             }
             live = true;
             while (running) {
@@ -211,16 +194,15 @@ final class SceneSession {
         } finally {
             running = false;
             live = false;
-            closeLinks();
-            // Остановка рабочих сокетов уже выполнена; очистка демонов не отменяется interrupt.
+            // Закрытие окон и очистка демонов не отменяются interrupt от stop().
             Thread.interrupted();
+            closeLinks();
             if (lostReason != null) {
                 why = lostReason;
             }
-            if (keepDaemons) {
-                why += " · демоны оставлены новой сессии";
-            } else if (managed) {
+            if (removeDaemons && managed) {
                 state("Окна отключены; останавливаю наши демоны…");
+                DimDaemon.forget(context);
                 try (QnxShell qnx = QnxShell.open(config.host, "root", config.password)) {
                     DimDaemon.stop(qnx);
                     why += " · демоны остановлены";
@@ -234,20 +216,25 @@ final class SceneSession {
         }
     }
 
-    private void openLinks() throws IOException, InterruptedException {
+    /** reusing — демоны могли пропасть (перезагрузка QNX): отказ в подключении не ждём. */
+    private void openLinks(boolean reusing) throws IOException, InterruptedException {
         for (SceneConfig.Layer layer : layers()) {
             if (layer.enabled) {
                 Link link = new Link(layer);
                 links.add(link);
                 checkRunning();
-                link.open();
+                link.open(reusing);
             }
         }
     }
 
     private void closeLinks() {
         for (Link link : links) {
-            link.close();
+            try {
+                link.finish();
+            } catch (InterruptedException e) {
+                link.close();
+            }
         }
         links.clear();
     }
@@ -271,6 +258,7 @@ final class SceneSession {
         private int sequence;
         private volatile int frames;
         private volatile Thread ticker;
+        private volatile Thread reader;
         /** Закрыто нами: обрыв этого сокета — не потеря связи. */
         private volatile boolean closed;
 
@@ -282,7 +270,7 @@ final class SceneSession {
          * Подключение и HELLO с повтором: демон ещё не слушает или ещё держит
          * прежнюю сессию (ERR_BUSY, пока не заметит закрытие сокета или watchdog).
          */
-        void open() throws IOException, InterruptedException {
+        void open(boolean reusing) throws IOException, InterruptedException {
             long deadline = android.os.SystemClock.elapsedRealtime() + 10000;
             byte[][] payload = new byte[1][];
             DataInputStream in;
@@ -312,6 +300,7 @@ final class SceneSession {
                     retry = type == Gcp.T_ERROR && Gcp.errorCode(payload[0]) == Gcp.ERR_BUSY;
                 } catch (IOException e) {
                     failure = e;
+                    retry = !reusing;
                 }
                 try {
                     s.close();
@@ -323,13 +312,15 @@ final class SceneSession {
                 Thread.sleep(500);
             }
             checkRunning();
-            DataInputStream reader = in;
+            DataInputStream replies = in;
+            // Ответ на PING раз в 500 мс; молчание дольше — связь потеряна, а не задержка QNX.
+            socket.setSoTimeout(READ_TIMEOUT_MS);
             Log.i(TAG, layer.id() + ": HELLO_ACK dpy=" + layer.display + " z=" + layer.z
                     + " " + layer.w + "x" + layer.h + " @" + layer.x + "," + layer.y);
-            new Thread(() -> {
+            reader = new Thread(() -> {
                 try {
                     while (running && !closed) {
-                        int reply = read(reader, payload);
+                        int reply = read(replies, payload);
                         if (reply == Gcp.T_ERROR || reply == Gcp.T_BYE) {
                             throw new IOException(reply == Gcp.T_ERROR
                                     ? Gcp.describeError(payload[0]) : "демон закрыл окно");
@@ -341,7 +332,8 @@ final class SceneSession {
                         stop();
                     }
                 }
-            }, "atlasdim-" + layer.id() + "-read").start();
+            }, "atlasdim-" + layer.id() + "-read");
+            reader.start();
             bitmap = Bitmap.createBitmap(layer.w, layer.h, Bitmap.Config.ARGB_8888);
             rgba = new byte[layer.w * layer.h * 4];
             // Каждое окно посылает heartbeat уже во время подключения следующего.
@@ -383,6 +375,40 @@ final class SceneSession {
         void send(int type, int flags, byte[] payload) throws IOException {
             out.write(Gcp.message(type, flags, ++sequence, payload));
             out.flush();
+        }
+
+        /**
+         * Прозрачный кадр (как в ANHUD: окно может сохранить последний кадр), затем
+         * закрытие. Демон, увидев конец потока, убирает окно и ждёт следующего клиента.
+         */
+        void finish() throws InterruptedException {
+            Thread sender = ticker;
+            if (sender != null && !closed) {
+                sender.interrupt();
+                sender.join(1000);
+                if (!sender.isAlive()) {
+                    // Запись в мёртвую связь может зависнуть: закрытие сокета её прервёт.
+                    Thread guard = new Thread(() -> {
+                        try {
+                            Thread.sleep(2000);
+                            close();
+                        } catch (InterruptedException ignored) {
+                        }
+                    }, "atlasdim-" + layer.id() + "-finish");
+                    guard.start();
+                    try {
+                        send(Gcp.T_FRAME, Gcp.FRAME_LAST,
+                                Gcp.frame(new byte[layer.w * layer.h * 4], layer.w, layer.h));
+                        socket.shutdownOutput();
+                        reader.join(500);
+                    } catch (IOException e) {
+                        Log.w(TAG, layer.id() + ": прозрачный кадр не отправлен: " + e.getMessage());
+                    } finally {
+                        guard.interrupt();
+                    }
+                }
+            }
+            close();
         }
 
         void close() {

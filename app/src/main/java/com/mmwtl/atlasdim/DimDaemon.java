@@ -30,6 +30,7 @@ final class DimDaemon {
     private static final int TELNET_LINE_MAX = 200;
     private static final int TELNET_BATCH_LINES = 40;
     private static final long TELNET_BATCH_TIMEOUT_MS = 60000;
+    private static final String KEY_LAUNCHED = "daemons";
 
     interface Progress {
         void step(String text);
@@ -90,6 +91,33 @@ final class DimDaemon {
                 start(asset.clone(), qnx, layer, progress);
             }
         }
+    }
+
+    /**
+     * Что запущено нами на QNX: хост, версия APK (в ней бинарник демона) и display/z
+     * каждого окна. Совпадает с композицией — окна открываются без telnet.
+     */
+    static String signature(SceneConfig config) {
+        StringBuilder sb = new StringBuilder(config.host).append(' ')
+                .append(BuildConfig.VERSION_CODE).append(' ').append(BuildConfig.VERSION_NAME);
+        for (SceneConfig.Kind kind : SceneConfig.Kind.values()) {
+            SceneConfig.Layer layer = config.layer(kind);
+            sb.append(' ').append(layer.id())
+                    .append(layer.enabled ? layer.display + ":" + layer.z : "-");
+        }
+        return sb.toString();
+    }
+
+    static boolean launched(Context context, SceneConfig config) {
+        return signature(config).equals(SceneService.prefs(context).getString(KEY_LAUNCHED, null));
+    }
+
+    static void remember(Context context, SceneConfig config) {
+        SceneService.prefs(context).edit().putString(KEY_LAUNCHED, signature(config)).apply();
+    }
+
+    static void forget(Context context) {
+        SceneService.prefs(context).edit().remove(KEY_LAUNCHED).apply();
     }
 
     private static String path(SceneConfig.Layer layer) {
