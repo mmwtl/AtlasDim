@@ -483,6 +483,13 @@ public final class SceneTestRunner extends Instrumentation {
         android.content.SharedPreferences prefs = prefs();
         java.util.Map<String, ?> saved = prefs.getAll();
         prefs.edit().clear().commit();
+        // Имитаторы gcp/1 уже слушают порты: демоны «запущены» с теми же display/z, telnet не нужен.
+        SceneConfig launched = new SceneConfig();
+        launched.host = "127.0.0.1";
+        launched.background.enabled = true;
+        launched.background.display = 1;
+        launched.background.z = 2;
+        DimDaemon.remember(getTargetContext(), launched);
         Activity activity = startActivitySync(new android.content.Intent(getTargetContext(),
                 MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
         try (FakeDaemon bg = new FakeDaemon(50211, 0, false);
@@ -490,8 +497,6 @@ public final class SceneTestRunner extends Instrumentation {
             runOnMainSync(() -> {
                 android.view.View root = activity.getWindow().getDecorView();
                 ((android.widget.EditText) find(root, "Хост QNX", true)).setText("127.0.0.1");
-                // Имитаторы gcp/1 уже слушают порты; telnet-запуск демонов не нужен.
-                ((android.widget.Switch) find(root, "Запускать демоны", true)).setChecked(false);
                 ((android.widget.Switch) find(root, "Фон: включить", true)).setChecked(true);
                 find(root, "Фон: дисплей 1", true).performClick();
                 // Фон на dpy-1 z=3 закрыл бы приборы — не применяется.

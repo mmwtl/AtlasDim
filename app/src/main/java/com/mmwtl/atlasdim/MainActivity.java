@@ -79,7 +79,6 @@ public final class MainActivity extends ScaledActivity {
     private TextView pill;
     private EditText host;
     private EditText password;
-    private Switch autoStart;
     private Switch boot;
     private Button diagButton;
     private TextView diagStatus;
@@ -333,8 +332,6 @@ public final class MainActivity extends ScaledActivity {
         boolean built = !BuildConfig.QNX_PASSWORD.isEmpty();
         link.addView(built ? hint(getString(R.string.link_hint_built, BuildConfig.QNX_HOST))
                 : hint(R.string.link_hint_missing));
-        autoStart = toggle(link, R.string.link_auto, prefs.getBoolean("auto", true));
-        autoStart.setContentDescription("Запускать демоны");
         boot = toggle(link, R.string.link_boot, prefs.getBoolean(SceneService.KEY_BOOT, true));
         boot.setContentDescription("Автозапуск после загрузки");
         link.addView(hint(R.string.link_background_hint));
@@ -586,8 +583,7 @@ public final class MainActivity extends ScaledActivity {
         SceneConfig config = new SceneConfig();
         config.host = host.getText().toString().trim();
         String typed = password.getText().toString();
-        config.password = !autoStart.isChecked() ? ""
-                : typed.isEmpty() ? BuildConfig.QNX_PASSWORD : typed;
+        config.password = typed.isEmpty() ? BuildConfig.QNX_PASSWORD : typed;
         clock.read(config.clock);
         fuel.read(config.fuel);
         background.read(config.background);
@@ -657,6 +653,10 @@ public final class MainActivity extends ScaledActivity {
             if (config.host.isEmpty()) {
                 throw new IllegalArgumentException(getString(R.string.error_host));
             }
+            // /tmp на QNX чистится при загрузке — без telnet демонов не будет.
+            if (config.password.isEmpty()) {
+                throw new IllegalArgumentException(getString(R.string.error_password));
+            }
         } catch (IllegalArgumentException e) {
             status.setText(getString(R.string.status_not_applied, e.getMessage()));
             status.setTextColor(Ui.ERROR);
@@ -712,7 +712,6 @@ public final class MainActivity extends ScaledActivity {
         SharedPreferences.Editor edit = prefs().edit();
         edit.putString("host", host.getText().toString().trim());
         edit.putString("password", password.getText().toString());
-        edit.putBoolean("auto", autoStart.isChecked());
         edit.putBoolean(SceneService.KEY_BOOT, boot.isChecked());
         clock.save(edit);
         fuel.save(edit);

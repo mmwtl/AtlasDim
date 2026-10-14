@@ -139,7 +139,7 @@ final class SceneSession {
 
     private void session() {
         String why = "Остановлено";
-        // С паролем на QNX могут остаться наши демоны (в том числе от прежней сессии).
+        // Без пароля (только тесты с имитаторами) — окна к уже слушающим портам, без telnet.
         boolean managed = !config.password.isEmpty();
         try {
             config.validate();

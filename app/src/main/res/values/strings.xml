@@ -27,6 +27,7 @@
     <string name="status_stopping">Останавливаю композицию…</string>
     <string name="status_not_applied">Не применено: %1$s</string>
     <string name="error_host">Введите хост QNX</string>
+    <string name="error_password">Введите пароль root QNX</string>
 
     <string name="layer_port">TCP %1$d</string>
     <string name="layer_display">Экран QNX</string>
@@ -85,9 +86,8 @@
     <string name="gallery_files">Открыть файлы…</string>
 
     <string name="link_title">Связь с QNX</string>
-    <string name="link_hint_built">Всё стандартное: %1$s, root, пароль из сборки. Приложение само запускает свои демоны в /tmp и убирает их при остановке.</string>
-    <string name="link_hint_missing">Пароль в сборке не задан (qnx.password в local.properties). Введите его ниже или запустите демоны вручную и выключите автозапуск.</string>
-    <string name="link_auto">Запускать демоны автоматически</string>
+    <string name="link_hint_built">Всё стандартное: %1$s, root, пароль из сборки. Приложение само запускает свои демоны в /tmp; «Убрать всё» их останавливает.</string>
+    <string name="link_hint_missing">Пароль в сборке не задан (qnx.password в local.properties). Введите его ниже: без него демоны не запустить.</string>
     <string name="link_boot">Возвращать на приборку после загрузки ГУ</string>
     <string name="link_background_hint">Композиция работает в фоне и без открытого приложения. «Убрать всё» снимает окна и отключает возврат после загрузки.</string>
     <string name="link_manual">Вручную, если отличается</string>
@@ -96,7 +96,7 @@
     <string name="link_password">Пароль root</string>
     <string name="link_password_built">из сборки</string>
     <string name="link_password_missing">не задан</string>
-    <string name="link_ports_hint">Без автозапуска приложение подключается к уже работающим демонам: часы — TCP 50210, фон — TCP 50211, топливо — TCP 50212. QNX: dpy-1 — приборы (z=3) и лампы (z=10), dpy-2 — фон приборки, dpy-3 — центральный экран.</string>
+    <string name="link_ports_hint">Порты демонов: часы — TCP 50210, фон — TCP 50211, топливо — TCP 50212. QNX: dpy-1 — приборы (z=3) и лампы (z=10), dpy-2 — фон приборки, dpy-3 — центральный экран.</string>
 
     <string name="interface_title">Интерфейс приложения</string>
     <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>
