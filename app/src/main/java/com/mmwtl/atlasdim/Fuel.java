@@ -18,29 +18,37 @@ final class Fuel {
     /** Знаков после запятой в множителе и смещении. */
     static final int DECIMALS = 6;
 
-    final int liters;
-    final int freeLiters;
-    final int capacityLiters;
+    final double liters;
+    final double freeLiters;
+    final double capacityLiters;
+    /** Знаков после запятой в показаниях, 0…{@link #DECIMALS}. */
+    final int digits;
     /** Датчик на нуле: {@link #liters} — верхняя граница, свободный объём — нижняя. */
     final boolean atFloor;
 
-    private Fuel(int liters, int capacityLiters, boolean atFloor) {
+    private Fuel(double liters, double capacityLiters, int digits, boolean atFloor) {
         this.liters = liters;
         this.capacityLiters = capacityLiters;
-        this.freeLiters = capacityLiters - liters;
+        this.freeLiters = round(capacityLiters - liters, digits);
+        this.digits = digits;
         this.atFloor = atFloor;
     }
 
-    /** null — нет свежего показания или формула непригодна. */
-    static Fuel of(Double sensorValue, double multiplier, double offset) {
+    /** null — нет свежего показания или формула непригодна; литры округлены до digits. */
+    static Fuel of(Double sensorValue, double multiplier, double offset, int digits) {
         if (sensorValue == null || !Double.isFinite(sensorValue)
-                || !isValid(multiplier, offset)) {
+                || !isValid(multiplier, offset) || digits < 0 || digits > DECIMALS) {
             return null;
         }
-        int capacity = capacityLiters(multiplier, offset);
+        double capacity = round(capacityLiters(multiplier, offset), digits);
         double value = Math.max(API_MIN, Math.min(API_MAX, sensorValue));
-        int liters = (int) Math.max(0, Math.min(capacity, Math.round(value * multiplier + offset)));
-        return new Fuel(liters, capacity, value <= API_MIN);
+        double liters = Math.max(0, Math.min(capacity, round(value * multiplier + offset, digits)));
+        return new Fuel(liters, capacity, digits, value <= API_MIN);
+    }
+
+    private static double round(double value, int digits) {
+        double scale = Math.pow(10, digits);
+        return Math.round(value * scale) / scale;
     }
 
     static boolean isValid(double multiplier, double offset) {
@@ -49,10 +57,10 @@ final class Fuel {
     }
 
     /** Больший конец формулы на диапазоне датчика, не меньше нуля. */
-    static int capacityLiters(double multiplier, double offset) {
+    static double capacityLiters(double multiplier, double offset) {
         double atMin = API_MIN * multiplier + offset;
         double atMax = API_MAX * multiplier + offset;
-        return (int) Math.max(0, Math.round(Math.max(atMin, atMax)));
+        return Math.max(0, Math.max(atMin, atMax));
     }
 
     /** Коэффициент без хвостовых нулей: 0.5, 4, -1.25, 0.123456. */
@@ -64,11 +72,16 @@ final class Fuel {
         return text.replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
+    /** Показание с заданным числом знаков; дробная часть через запятую. */
+    private String text(double value) {
+        return String.format(new java.util.Locale("ru"), "%." + digits + "f", value);
+    }
+
     String litersText() {
-        return (atFloor ? "<" : "") + liters;
+        return (atFloor ? "<" : "") + text(liters);
     }
 
     String freeText() {
-        return (atFloor ? ">" : "") + freeLiters;
+        return (atFloor ? ">" : "") + text(freeLiters);
     }
 }

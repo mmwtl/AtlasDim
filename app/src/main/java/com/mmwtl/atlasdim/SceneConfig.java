@@ -42,6 +42,9 @@ final class SceneConfig {
     /** Свои подписи показателей (пусто — без подписи), друг над другом, разбежка в px. */
     String fuelLabelLiters = FUEL_LABEL_LITERS;
     String fuelLabelFree = FUEL_LABEL_FREE;
+    /** «л» после числа и знаков после запятой в показаниях. */
+    boolean fuelUnits = true;
+    int fuelDigits;
     boolean fuelStacked;
     int fuelGapH = FUEL_GAP_H;
     int fuelGapV = FUEL_GAP_V;
@@ -177,6 +180,8 @@ final class SceneConfig {
         fuelOffset = other.fuelOffset;
         fuelLabelLiters = other.fuelLabelLiters;
         fuelLabelFree = other.fuelLabelFree;
+        fuelUnits = other.fuelUnits;
+        fuelDigits = other.fuelDigits;
         fuelStacked = other.fuelStacked;
         fuelGapH = other.fuelGapH;
         fuelGapV = other.fuelGapV;
@@ -228,6 +233,9 @@ final class SceneConfig {
                 || fuelLabelFree.length() > FUEL_LABEL_MAX)) {
             throw new IllegalArgumentException("Топливо: подпись до " + FUEL_LABEL_MAX + " символов");
         }
+        if (fuel.enabled && (fuelDigits < 0 || fuelDigits > Fuel.DECIMALS)) {
+            throw new IllegalArgumentException("Топливо: знаков после запятой 0…" + Fuel.DECIMALS);
+        }
     }
 
     /** Применённая композиция: её же поднимает сервис после загрузки ГУ. */
@@ -239,7 +247,8 @@ final class SceneConfig {
                     .put("fuelLiters", fuelLiters).put("fuelFree", fuelFree)
                     .put("fuelPlate", fuelPlate).put("fuelMultiplier", fuelMultiplier)
                     .put("fuelOffset", fuelOffset).put("fuelLabelLiters", fuelLabelLiters)
-                    .put("fuelLabelFree", fuelLabelFree)
+                    .put("fuelLabelFree", fuelLabelFree).put("fuelUnits", fuelUnits)
+                    .put("fuelDigits", fuelDigits)
                     .put("fuelStacked", fuelStacked).put("fuelGapH", fuelGapH)
                     .put("fuelGapV", fuelGapV).put("unrestricted", unrestricted);
             for (Layer layer : layers()) {
@@ -281,6 +290,8 @@ final class SceneConfig {
         config.fuelOffset = json.optDouble("fuelOffset", config.fuelOffset);
         config.fuelLabelLiters = json.optString("fuelLabelLiters", config.fuelLabelLiters);
         config.fuelLabelFree = json.optString("fuelLabelFree", config.fuelLabelFree);
+        config.fuelUnits = json.optBoolean("fuelUnits", config.fuelUnits);
+        config.fuelDigits = json.optInt("fuelDigits", config.fuelDigits);
         config.fuelStacked = json.optBoolean("fuelStacked", config.fuelStacked);
         config.fuelGapH = json.optInt("fuelGapH", config.fuelGapH);
         config.fuelGapV = json.optInt("fuelGapV", config.fuelGapV);

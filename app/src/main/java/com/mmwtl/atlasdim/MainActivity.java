@@ -105,6 +105,8 @@ public final class MainActivity extends ScaledActivity {
     private Switch fuelPlate;
     private EditText fuelLabelLiters;
     private EditText fuelLabelFree;
+    private Switch fuelUnits;
+    private EditText fuelDigits;
     private Switch fuelStacked;
     private EditText fuelGapH;
     private EditText fuelGapV;
@@ -253,7 +255,12 @@ public final class MainActivity extends ScaledActivity {
         fuelLiters = toggle(shown, R.string.fuel_liters, prefs.getBoolean("fuel.liters", true));
         fuelFree = toggle(shown, R.string.fuel_free, prefs.getBoolean("fuel.free", true));
         fuelStacked = toggle(shown, R.string.fuel_stacked, prefs.getBoolean("fuel.stacked", false));
+        fuelUnits = toggle(shown, R.string.fuel_units, prefs.getBoolean("fuel.units", true));
         fuelPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("fuel.plate", false));
+        LinearLayout digitsRow = new LinearLayout(this);
+        fuelDigits = formulaCell(digitsRow, R.string.fuel_digits,
+                prefs.getString("fuel.digits", "0"), NUMBER);
+        shown.addView(digitsRow, margin(10));
 
         shown.addView(label(R.string.fuel_labels));
         LinearLayout labels = new LinearLayout(this);
@@ -639,10 +646,12 @@ public final class MainActivity extends ScaledActivity {
         config.fuelPlate = fuelPlate.isChecked();
         config.fuelLabelLiters = fuelLabelLiters.getText().toString().trim();
         config.fuelLabelFree = fuelLabelFree.getText().toString().trim();
+        config.fuelUnits = fuelUnits.isChecked();
         config.fuelStacked = fuelStacked.isChecked();
         if (config.fuel.enabled) {
             config.fuelMultiplier = decimal(fuelMultiplier, "Топливо: множитель");
             config.fuelOffset = decimal(fuelOffset, "Топливо: смещение");
+            config.fuelDigits = number(fuelDigits, "Топливо: знаков после запятой");
             config.fuelGapH = number(fuelGapH, "Топливо: разбежка в строку");
             config.fuelGapV = number(fuelGapV, "Топливо: разбежка в столбик");
         }
@@ -768,6 +777,8 @@ public final class MainActivity extends ScaledActivity {
                 .putBoolean("fuel.plate", fuelPlate.isChecked())
                 .putString("fuel.labelLiters", fuelLabelLiters.getText().toString())
                 .putString("fuel.labelFree", fuelLabelFree.getText().toString())
+                .putBoolean("fuel.units", fuelUnits.isChecked())
+                .putString("fuel.digits", fuelDigits.getText().toString())
                 .putBoolean("fuel.stacked", fuelStacked.isChecked())
                 .putString("fuel.gapH", fuelGapH.getText().toString())
                 .putString("fuel.gapV", fuelGapV.getText().toString())

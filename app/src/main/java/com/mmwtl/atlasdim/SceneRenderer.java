@@ -28,10 +28,10 @@ final class SceneRenderer {
      * Показатели разделены {@link #PARTS}: раскладку и разбежку задаёт {@link #draw}.
      */
     static String fuel(SceneConfig config, Double sensor) {
-        Fuel fuel = Fuel.of(sensor, config.fuelMultiplier, config.fuelOffset);
-        String liters = config.fuelLiters ? labeled(config.fuelLabelLiters,
+        Fuel fuel = Fuel.of(sensor, config.fuelMultiplier, config.fuelOffset, config.fuelDigits);
+        String liters = config.fuelLiters ? labeled(config, config.fuelLabelLiters,
                 fuel == null ? "—" : fuel.litersText()) : null;
-        String free = config.fuelFree ? labeled(config.fuelLabelFree,
+        String free = config.fuelFree ? labeled(config, config.fuelLabelFree,
                 fuel == null ? "—" : fuel.freeText()) : null;
         // Друг над другом свободный объём сверху, в строку — залитый первым.
         String first = config.fuelStacked ? free : liters;
@@ -42,8 +42,8 @@ final class SceneRenderer {
         return first + PARTS + second;
     }
 
-    private static String labeled(String label, String value) {
-        return (label.isEmpty() ? "" : label + " ") + value + " л";
+    private static String labeled(SceneConfig config, String label, String value) {
+        return (label.isEmpty() ? "" : label + " ") + value + (config.fuelUnits ? " л" : "");
     }
 
     /** Текст окна на этот момент; фон текста не имеет. */

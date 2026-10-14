@@ -55,8 +55,10 @@
     <string name="fuel_shown_title">Что показывать</string>
     <string name="fuel_liters">Залито, л</string>
     <string name="fuel_free">Свободно, л</string>
+    <string name="fuel_units">«л» после числа</string>
+    <string name="fuel_digits">Знаков после запятой в литрах (0–6)</string>
     <string name="fuel_labels">Подписи</string>
-    <string name="fuel_labels_hint">Пишутся перед числом, «л» — после. Пустое поле — без подписи.</string>
+    <string name="fuel_labels_hint">Пишутся перед числом. Пустое поле — без подписи.</string>
     <string name="fuel_stacked">Друг над другом</string>
     <string name="fuel_gap">Разбежка между показателями, px</string>
     <string name="fuel_gap_h">В строку</string>
