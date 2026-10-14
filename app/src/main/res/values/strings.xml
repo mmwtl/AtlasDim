@@ -55,11 +55,17 @@
     <string name="fuel_shown_title">Что показывать</string>
     <string name="fuel_liters">Залито, л</string>
     <string name="fuel_free">Свободно, л</string>
+    <string name="fuel_labels">Подписи «залито» и «своб.»</string>
+    <string name="fuel_stacked">Друг над другом</string>
+    <string name="fuel_gap">Разбежка между показателями, px</string>
+    <string name="fuel_gap_h">В строку</string>
+    <string name="fuel_gap_v">Друг над другом</string>
+    <string name="fuel_gap_hint">В строку — отступ по обе стороны точки, друг над другом — между строками. Для двух строк увеличьте высоту окна.</string>
     <string name="fuel_formula_title">Формула</string>
     <string name="fuel_formula_summary">Литры = датчик × множитель + смещение</string>
     <string name="fuel_multiplier">Множитель</string>
     <string name="fuel_offset">Смещение</string>
-    <string name="fuel_formula_hint">Датчик Fuel Percentage (0–100) из GInputBridge, как в Atlas Climate Widget. По умолчанию бак 54 л: × 0.5 + 4. Без GInputBridge или до первого ответа — «—».</string>
+    <string name="fuel_formula_hint">Датчик Fuel Percentage (0–100) из GInputBridge, как в Atlas Climate Widget. По умолчанию бак 54 л: × 0.5 + 4. До 6 знаков после запятой. Без GInputBridge или до первого ответа — «—».</string>
 
     <string name="background_picture_title">Картинка</string>
     <string name="background_add">＋\nКартинка</string>

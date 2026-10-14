@@ -11,6 +11,10 @@ import java.util.Locale;
 
 /** Один и тот же рисунок используется в предпросмотре и в кадрах для QNX. */
 final class SceneRenderer {
+    /** Разделитель показателей в тексте окна. */
+    static final char PARTS = '\n';
+    private static final String DOT = "·";
+
     private SceneRenderer() {
     }
 
@@ -19,20 +23,23 @@ final class SceneRenderer {
                 .format(new Date());
     }
 
-    /** Литры по датчику ГИБ, как строка датчиков AtlasClimateWidget; без показания — «—». */
+    /**
+     * Литры по датчику ГИБ, как строка датчиков AtlasClimateWidget; без показания — «—».
+     * Показатели разделены {@link #PARTS}: раскладку и разбежку задаёт {@link #draw}.
+     */
     static String fuel(SceneConfig config, Double sensor) {
         Fuel fuel = Fuel.of(sensor, config.fuelMultiplier, config.fuelOffset);
-        StringBuilder text = new StringBuilder();
-        if (config.fuelLiters) {
-            text.append(fuel == null ? "—" : fuel.litersText()).append(" л");
+        String liters = config.fuelLiters ? (config.fuelLabels ? "залито " : "")
+                + (fuel == null ? "—" : fuel.litersText()) + " л" : null;
+        String free = config.fuelFree ? (config.fuelLabels ? "своб. " : "")
+                + (fuel == null ? "—" : fuel.freeText()) + " л" : null;
+        // Друг над другом свободный объём сверху, в строку — залитый первым.
+        String first = config.fuelStacked ? free : liters;
+        String second = config.fuelStacked ? liters : free;
+        if (first == null || second == null) {
+            return first != null ? first : second != null ? second : "";
         }
-        if (config.fuelFree) {
-            if (text.length() > 0) {
-                text.append(" · ");
-            }
-            text.append("своб. ").append(fuel == null ? "—" : fuel.freeText()).append(" л");
-        }
-        return text.toString();
+        return first + PARTS + second;
     }
 
     /** Текст окна на этот момент; фон текста не имеет. */
@@ -77,14 +84,64 @@ final class SceneRenderer {
         }
         paint.setColor(Color.WHITE);
         paint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        String[] parts = text.split(String.valueOf(PARTS));
+        if (parts.length > 1 && config.fuelStacked) {
+            drawStacked(canvas, paint, layer, parts, config.fuelGapV);
+        } else if (parts.length > 1) {
+            drawRow(canvas, paint, layer, parts, config.fuelGapH);
+        } else {
+            drawRow(canvas, paint, layer, parts, 0);
+        }
+    }
+
+    /** В строку: показатели через «·», разбежка gap px по обе стороны точки. */
+    private static void drawRow(Canvas canvas, Paint paint, SceneConfig.Layer layer,
+            String[] parts, int gap) {
         paint.setTextSize(layer.h * 0.7f);
-        float width = paint.measureText(text);
-        float maxWidth = layer.w * 0.9f;
-        if (width > maxWidth) {
-            paint.setTextSize(paint.getTextSize() * maxWidth / width);
+        float text = 0;
+        for (int i = 0; i < parts.length; i++) {
+            text += paint.measureText(parts[i]) + (i > 0 ? paint.measureText(DOT) : 0);
+        }
+        float gaps = 2f * gap * (parts.length - 1);
+        float maxWidth = layer.w * 0.9f - gaps;
+        if (text > maxWidth && maxWidth > 0) {
+            paint.setTextSize(paint.getTextSize() * maxWidth / text);
+            text = maxWidth;
         }
         Paint.FontMetrics fm = paint.getFontMetrics();
-        canvas.drawText(text, (layer.w - paint.measureText(text)) / 2f,
-                (layer.h - fm.ascent - fm.descent) / 2f, paint);
+        float y = (layer.h - fm.ascent - fm.descent) / 2f;
+        float x = (layer.w - text - gaps) / 2f;
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                x += gap;
+                canvas.drawText(DOT, x, y, paint);
+                x += paint.measureText(DOT) + gap;
+            }
+            canvas.drawText(parts[i], x, y, paint);
+            x += paint.measureText(parts[i]);
+        }
+    }
+
+    /** Друг над другом по центру, gap px между строками. */
+    private static void drawStacked(Canvas canvas, Paint paint, SceneConfig.Layer layer,
+            String[] parts, int gap) {
+        int n = parts.length;
+        float lineHeight = Math.max(1, (layer.h * 0.9f - gap * (n - 1)) / n);
+        paint.setTextSize(lineHeight * 0.85f);
+        float widest = 0;
+        for (String part : parts) {
+            widest = Math.max(widest, paint.measureText(part));
+        }
+        float maxWidth = layer.w * 0.9f;
+        if (widest > maxWidth) {
+            paint.setTextSize(paint.getTextSize() * maxWidth / widest);
+        }
+        Paint.FontMetrics fm = paint.getFontMetrics();
+        float line = fm.descent - fm.ascent;
+        float y = (layer.h - line * n - gap * (n - 1)) / 2f - fm.ascent;
+        for (String part : parts) {
+            canvas.drawText(part, (layer.w - paint.measureText(part)) / 2f, y, paint);
+            y += line + gap;
+        }
     }
 }

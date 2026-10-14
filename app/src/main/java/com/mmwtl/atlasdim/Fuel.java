@@ -8,13 +8,15 @@ package com.mmwtl.atlasdim;
  * поэтому значения становятся границами ({@code <4}/{@code >50}).
  */
 final class Fuel {
-    static final float MULTIPLIER = 0.5f;
-    static final float OFFSET = 4f;
-    static final float API_MIN = 0f;
-    static final float API_MAX = 100f;
+    static final double MULTIPLIER = 0.5;
+    static final double OFFSET = 4;
+    static final double API_MIN = 0;
+    static final double API_MAX = 100;
     /** Пределы своей формулы — те же, что в AtlasAppWidget. */
-    static final float MULTIPLIER_LIMIT = 100f;
-    static final float OFFSET_LIMIT = 1_000f;
+    static final double MULTIPLIER_LIMIT = 100;
+    static final double OFFSET_LIMIT = 1_000;
+    /** Знаков после запятой в множителе и смещении. */
+    static final int DECIMALS = 6;
 
     final int liters;
     final int freeLiters;
@@ -30,35 +32,35 @@ final class Fuel {
     }
 
     /** null — нет свежего показания или формула непригодна. */
-    static Fuel of(Double sensorValue, float multiplier, float offset) {
+    static Fuel of(Double sensorValue, double multiplier, double offset) {
         if (sensorValue == null || !Double.isFinite(sensorValue)
                 || !isValid(multiplier, offset)) {
             return null;
         }
         int capacity = capacityLiters(multiplier, offset);
-        float value = Math.max(API_MIN, Math.min(API_MAX, sensorValue.floatValue()));
-        int liters = Math.max(0, Math.min(capacity, Math.round(value * multiplier + offset)));
+        double value = Math.max(API_MIN, Math.min(API_MAX, sensorValue));
+        int liters = (int) Math.max(0, Math.min(capacity, Math.round(value * multiplier + offset)));
         return new Fuel(liters, capacity, value <= API_MIN);
     }
 
-    static boolean isValid(float multiplier, float offset) {
-        return Float.isFinite(multiplier) && Float.isFinite(offset)
+    static boolean isValid(double multiplier, double offset) {
+        return Double.isFinite(multiplier) && Double.isFinite(offset)
                 && Math.abs(multiplier) <= MULTIPLIER_LIMIT && Math.abs(offset) <= OFFSET_LIMIT;
     }
 
     /** Больший конец формулы на диапазоне датчика, не меньше нуля. */
-    static int capacityLiters(float multiplier, float offset) {
-        float atMin = API_MIN * multiplier + offset;
-        float atMax = API_MAX * multiplier + offset;
-        return Math.max(0, Math.round(Math.max(atMin, atMax)));
+    static int capacityLiters(double multiplier, double offset) {
+        double atMin = API_MIN * multiplier + offset;
+        double atMax = API_MAX * multiplier + offset;
+        return (int) Math.max(0, Math.round(Math.max(atMin, atMax)));
     }
 
-    /** Коэффициент без хвостовых нулей: 0.5, 4, -1.25. */
-    static String format(float value) {
+    /** Коэффициент без хвостовых нулей: 0.5, 4, -1.25, 0.123456. */
+    static String format(double value) {
         if (value == Math.rint(value)) {
-            return Integer.toString(Math.round(value));
+            return Long.toString(Math.round(value));
         }
-        String text = String.format(java.util.Locale.US, "%.3f", value);
+        String text = String.format(java.util.Locale.US, "%." + DECIMALS + "f", value);
         return text.replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 

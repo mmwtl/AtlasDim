@@ -55,6 +55,8 @@ public final class MainActivity extends ScaledActivity {
     /** Оранжевый акцент иконок Atlas: несохранённые на приборке правки. */
     private static final int PENDING = 0xFFE8793B;
     private static final int NUMBER = InputType.TYPE_CLASS_NUMBER;
+    private static final int DECIMAL = InputType.TYPE_CLASS_NUMBER
+            | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED;
     private static final int PICK_IMAGE = 1;
     private static final int READ_IMAGES = 2;
     private static final int[] SWATCHES = {0xff10243a, 0xff000000, 0xff1b1f27, 0xff0f2a2a,
@@ -100,6 +102,10 @@ public final class MainActivity extends ScaledActivity {
     private Switch fuelLiters;
     private Switch fuelFree;
     private Switch fuelPlate;
+    private Switch fuelLabels;
+    private Switch fuelStacked;
+    private EditText fuelGapH;
+    private EditText fuelGapV;
     private EditText fuelMultiplier;
     private EditText fuelOffset;
     private FuelSensor fuelSensor;
@@ -244,15 +250,25 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout shown = card(page, R.string.fuel_shown_title);
         fuelLiters = toggle(shown, R.string.fuel_liters, prefs.getBoolean("fuel.liters", true));
         fuelFree = toggle(shown, R.string.fuel_free, prefs.getBoolean("fuel.free", true));
+        fuelLabels = toggle(shown, R.string.fuel_labels, prefs.getBoolean("fuel.labels", true));
+        fuelStacked = toggle(shown, R.string.fuel_stacked, prefs.getBoolean("fuel.stacked", false));
         fuelPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("fuel.plate", false));
+        shown.addView(label(R.string.fuel_gap));
+        LinearLayout gaps = new LinearLayout(this);
+        fuelGapH = formulaCell(gaps, R.string.fuel_gap_h,
+                prefs.getString("fuel.gapH", String.valueOf(SceneConfig.FUEL_GAP_H)), NUMBER);
+        fuelGapV = formulaCell(gaps, R.string.fuel_gap_v,
+                prefs.getString("fuel.gapV", String.valueOf(SceneConfig.FUEL_GAP_V)), NUMBER);
+        shown.addView(gaps, margin(6));
+        shown.addView(hint(R.string.fuel_gap_hint));
 
         LinearLayout formula = card(page, R.string.fuel_formula_title);
         formula.addView(hint(R.string.fuel_formula_summary));
         LinearLayout cells = new LinearLayout(this);
         fuelMultiplier = formulaCell(cells, R.string.fuel_multiplier,
-                prefs.getString("fuel.multiplier", Fuel.format(Fuel.MULTIPLIER)));
+                prefs.getString("fuel.multiplier", Fuel.format(Fuel.MULTIPLIER)), DECIMAL);
         fuelOffset = formulaCell(cells, R.string.fuel_offset,
-                prefs.getString("fuel.offset", Fuel.format(Fuel.OFFSET)));
+                prefs.getString("fuel.offset", Fuel.format(Fuel.OFFSET)), DECIMAL);
         formula.addView(cells, margin(10));
         formula.addView(hint(R.string.fuel_formula_hint));
     }
@@ -595,9 +611,13 @@ public final class MainActivity extends ScaledActivity {
         config.fuelLiters = fuelLiters.isChecked();
         config.fuelFree = fuelFree.isChecked();
         config.fuelPlate = fuelPlate.isChecked();
+        config.fuelLabels = fuelLabels.isChecked();
+        config.fuelStacked = fuelStacked.isChecked();
         if (config.fuel.enabled) {
             config.fuelMultiplier = decimal(fuelMultiplier, "Топливо: множитель");
             config.fuelOffset = decimal(fuelOffset, "Топливо: смещение");
+            config.fuelGapH = number(fuelGapH, "Топливо: разбежка в строку");
+            config.fuelGapV = number(fuelGapV, "Топливо: разбежка в столбик");
         }
         config.seconds = seconds.isChecked();
         config.plate = plate.isChecked();
@@ -719,6 +739,10 @@ public final class MainActivity extends ScaledActivity {
         edit.putBoolean("fuel.liters", fuelLiters.isChecked())
                 .putBoolean("fuel.free", fuelFree.isChecked())
                 .putBoolean("fuel.plate", fuelPlate.isChecked())
+                .putBoolean("fuel.labels", fuelLabels.isChecked())
+                .putBoolean("fuel.stacked", fuelStacked.isChecked())
+                .putString("fuel.gapH", fuelGapH.getText().toString())
+                .putString("fuel.gapV", fuelGapV.getText().toString())
                 .putString("fuel.multiplier", fuelMultiplier.getText().toString())
                 .putString("fuel.offset", fuelOffset.getText().toString());
         edit.putBoolean("seconds", seconds.isChecked()).putBoolean("plate", plate.isChecked())
@@ -1103,13 +1127,11 @@ public final class MainActivity extends ScaledActivity {
 
     // ---- Общие элементы ----
 
-    private EditText formulaCell(LinearLayout row, int title, String value) {
+    private EditText formulaCell(LinearLayout row, int title, String value, int type) {
         LinearLayout box = column();
         box.addView(Ui.text(this, title, 12, Ui.TEXT_SECONDARY));
         EditText edit = new EditText(this);
-        styleField(edit, "Топливо: " + getString(title).toLowerCase(Locale.ROOT), value,
-                InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL
-                        | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        styleField(edit, "Топливо: " + getString(title).toLowerCase(Locale.ROOT), value, type);
         box.addView(edit, margin(4));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
         if (row.getChildCount() > 0) {
@@ -1119,10 +1141,16 @@ public final class MainActivity extends ScaledActivity {
         return edit;
     }
 
-    private float decimal(EditText field, String label) {
+    private double decimal(EditText field, String label) {
+        String text = field.getText().toString().trim().replace(',', '.');
+        int dot = text.indexOf('.');
+        if (dot >= 0 && text.length() - dot - 1 > Fuel.DECIMALS) {
+            throw new IllegalArgumentException(label + ": не больше " + Fuel.DECIMALS
+                    + " знаков после запятой");
+        }
         try {
-            float value = Float.parseFloat(field.getText().toString().trim().replace(',', '.'));
-            if (Float.isFinite(value)) {
+            double value = Double.parseDouble(text);
+            if (Double.isFinite(value)) {
                 return value;
             }
         } catch (NumberFormatException ignored) {
