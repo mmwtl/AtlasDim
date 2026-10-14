@@ -166,7 +166,7 @@ public final class MainActivity extends ScaledActivity {
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
         titleRow.setBaselineAligned(false);
         titleRow.addView(Ui.heading(this, R.string.app_name, 24));
-        TextView versionView = Ui.text(this, "v" + version() + " (" + BuildConfig.VERSION_CODE + ")", 12,
+        TextView versionView = Ui.text(this, version() + " (" + BuildConfig.VERSION_CODE + ")", 12,
                 Ui.TEXT_SECONDARY);
         versionView.setPadding(dp(8), dp(6), 0, 0);
         titleRow.addView(versionView, new LinearLayout.LayoutParams(0, -2, 1));
