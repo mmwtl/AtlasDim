@@ -39,14 +39,18 @@ final class SceneConfig {
     boolean fuelPlate = true;
     double fuelMultiplier = Fuel.MULTIPLIER;
     double fuelOffset = Fuel.OFFSET;
-    /** Подписи «залито»/«своб.», показатели друг над другом, разбежка между ними в px. */
-    boolean fuelLabels = true;
+    /** Свои подписи показателей (пусто — без подписи), друг над другом, разбежка в px. */
+    String fuelLabelLiters = FUEL_LABEL_LITERS;
+    String fuelLabelFree = FUEL_LABEL_FREE;
     boolean fuelStacked;
     int fuelGapH = FUEL_GAP_H;
     int fuelGapV = FUEL_GAP_V;
     static final int FUEL_GAP_H = 10;
     static final int FUEL_GAP_V = 4;
     static final int FUEL_GAP_MAX = 500;
+    static final String FUEL_LABEL_LITERS = "залито";
+    static final String FUEL_LABEL_FREE = "своб.";
+    static final int FUEL_LABEL_MAX = 20;
 
     enum Kind { CLOCK, FUEL, BACKGROUND }
 
@@ -171,7 +175,8 @@ final class SceneConfig {
         fuelPlate = other.fuelPlate;
         fuelMultiplier = other.fuelMultiplier;
         fuelOffset = other.fuelOffset;
-        fuelLabels = other.fuelLabels;
+        fuelLabelLiters = other.fuelLabelLiters;
+        fuelLabelFree = other.fuelLabelFree;
         fuelStacked = other.fuelStacked;
         fuelGapH = other.fuelGapH;
         fuelGapV = other.fuelGapV;
@@ -219,6 +224,10 @@ final class SceneConfig {
                 || fuelGapV < 0 || fuelGapV > FUEL_GAP_MAX)) {
             throw new IllegalArgumentException("Топливо: разбежка 0…" + FUEL_GAP_MAX + " px");
         }
+        if (fuel.enabled && (fuelLabelLiters.length() > FUEL_LABEL_MAX
+                || fuelLabelFree.length() > FUEL_LABEL_MAX)) {
+            throw new IllegalArgumentException("Топливо: подпись до " + FUEL_LABEL_MAX + " символов");
+        }
     }
 
     /** Применённая композиция: её же поднимает сервис после загрузки ГУ. */
@@ -229,7 +238,8 @@ final class SceneConfig {
                     .put("color", color).put("alpha", alpha).put("fill", fill)
                     .put("fuelLiters", fuelLiters).put("fuelFree", fuelFree)
                     .put("fuelPlate", fuelPlate).put("fuelMultiplier", fuelMultiplier)
-                    .put("fuelOffset", fuelOffset).put("fuelLabels", fuelLabels)
+                    .put("fuelOffset", fuelOffset).put("fuelLabelLiters", fuelLabelLiters)
+                    .put("fuelLabelFree", fuelLabelFree)
                     .put("fuelStacked", fuelStacked).put("fuelGapH", fuelGapH)
                     .put("fuelGapV", fuelGapV).put("unrestricted", unrestricted);
             for (Layer layer : layers()) {
@@ -269,7 +279,8 @@ final class SceneConfig {
         config.fuelPlate = json.optBoolean("fuelPlate", config.fuelPlate);
         config.fuelMultiplier = json.optDouble("fuelMultiplier", config.fuelMultiplier);
         config.fuelOffset = json.optDouble("fuelOffset", config.fuelOffset);
-        config.fuelLabels = json.optBoolean("fuelLabels", config.fuelLabels);
+        config.fuelLabelLiters = json.optString("fuelLabelLiters", config.fuelLabelLiters);
+        config.fuelLabelFree = json.optString("fuelLabelFree", config.fuelLabelFree);
         config.fuelStacked = json.optBoolean("fuelStacked", config.fuelStacked);
         config.fuelGapH = json.optInt("fuelGapH", config.fuelGapH);
         config.fuelGapV = json.optInt("fuelGapV", config.fuelGapV);

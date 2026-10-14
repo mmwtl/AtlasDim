@@ -29,10 +29,10 @@ final class SceneRenderer {
      */
     static String fuel(SceneConfig config, Double sensor) {
         Fuel fuel = Fuel.of(sensor, config.fuelMultiplier, config.fuelOffset);
-        String liters = config.fuelLiters ? (config.fuelLabels ? "залито " : "")
-                + (fuel == null ? "—" : fuel.litersText()) + " л" : null;
-        String free = config.fuelFree ? (config.fuelLabels ? "своб. " : "")
-                + (fuel == null ? "—" : fuel.freeText()) + " л" : null;
+        String liters = config.fuelLiters ? labeled(config.fuelLabelLiters,
+                fuel == null ? "—" : fuel.litersText()) : null;
+        String free = config.fuelFree ? labeled(config.fuelLabelFree,
+                fuel == null ? "—" : fuel.freeText()) : null;
         // Друг над другом свободный объём сверху, в строку — залитый первым.
         String first = config.fuelStacked ? free : liters;
         String second = config.fuelStacked ? liters : free;
@@ -40,6 +40,10 @@ final class SceneRenderer {
             return first != null ? first : second != null ? second : "";
         }
         return first + PARTS + second;
+    }
+
+    private static String labeled(String label, String value) {
+        return (label.isEmpty() ? "" : label + " ") + value + " л";
     }
 
     /** Текст окна на этот момент; фон текста не имеет. */

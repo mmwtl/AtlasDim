@@ -55,12 +55,14 @@
     <string name="fuel_shown_title">Что показывать</string>
     <string name="fuel_liters">Залито, л</string>
     <string name="fuel_free">Свободно, л</string>
-    <string name="fuel_labels">Подписи «залито» и «своб.»</string>
+    <string name="fuel_labels">Подписи</string>
+    <string name="fuel_labels_hint">Пишутся перед числом, «л» — после. Пустое поле — без подписи.</string>
     <string name="fuel_stacked">Друг над другом</string>
     <string name="fuel_gap">Разбежка между показателями, px</string>
     <string name="fuel_gap_h">В строку</string>
     <string name="fuel_gap_v">Друг над другом</string>
-    <string name="fuel_gap_hint">В строку — отступ по обе стороны точки, друг над другом — между строками. Для двух строк увеличьте высоту окна.</string>
+    <string name="fuel_gap_h_hint">Отступ по обе стороны точки между показателями.</string>
+    <string name="fuel_gap_v_hint">Расстояние между строками. Для двух строк увеличьте высоту окна.</string>
     <string name="fuel_formula_title">Формула</string>
     <string name="fuel_formula_summary">Литры = датчик × множитель + смещение</string>
     <string name="fuel_multiplier">Множитель</string>

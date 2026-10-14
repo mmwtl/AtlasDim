@@ -55,6 +55,7 @@ public final class MainActivity extends ScaledActivity {
     /** Оранжевый акцент иконок Atlas: несохранённые на приборке правки. */
     private static final int PENDING = 0xFFE8793B;
     private static final int NUMBER = InputType.TYPE_CLASS_NUMBER;
+    private static final int TEXT = InputType.TYPE_CLASS_TEXT;
     private static final int DECIMAL = InputType.TYPE_CLASS_NUMBER
             | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED;
     private static final int PICK_IMAGE = 1;
@@ -102,7 +103,8 @@ public final class MainActivity extends ScaledActivity {
     private Switch fuelLiters;
     private Switch fuelFree;
     private Switch fuelPlate;
-    private Switch fuelLabels;
+    private EditText fuelLabelLiters;
+    private EditText fuelLabelFree;
     private Switch fuelStacked;
     private EditText fuelGapH;
     private EditText fuelGapV;
@@ -250,17 +252,41 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout shown = card(page, R.string.fuel_shown_title);
         fuelLiters = toggle(shown, R.string.fuel_liters, prefs.getBoolean("fuel.liters", true));
         fuelFree = toggle(shown, R.string.fuel_free, prefs.getBoolean("fuel.free", true));
-        fuelLabels = toggle(shown, R.string.fuel_labels, prefs.getBoolean("fuel.labels", true));
         fuelStacked = toggle(shown, R.string.fuel_stacked, prefs.getBoolean("fuel.stacked", false));
         fuelPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("fuel.plate", false));
+
+        shown.addView(label(R.string.fuel_labels));
+        LinearLayout labels = new LinearLayout(this);
+        fuelLabelLiters = formulaCell(labels, R.string.fuel_liters,
+                prefs.getString("fuel.labelLiters", SceneConfig.FUEL_LABEL_LITERS), TEXT);
+        fuelLabelFree = formulaCell(labels, R.string.fuel_free,
+                prefs.getString("fuel.labelFree", SceneConfig.FUEL_LABEL_FREE), TEXT);
+        shown.addView(labels, margin(6));
+        shown.addView(hint(R.string.fuel_labels_hint));
+
+        // Разбежка только для выбранной раскладки: в строку или друг над другом.
         shown.addView(label(R.string.fuel_gap));
-        LinearLayout gaps = new LinearLayout(this);
-        fuelGapH = formulaCell(gaps, R.string.fuel_gap_h,
+        LinearLayout gapRow = new LinearLayout(this);
+        fuelGapH = formulaCell(gapRow, R.string.fuel_gap_h,
                 prefs.getString("fuel.gapH", String.valueOf(SceneConfig.FUEL_GAP_H)), NUMBER);
-        fuelGapV = formulaCell(gaps, R.string.fuel_gap_v,
+        shown.addView(gapRow, margin(6));
+        LinearLayout gapColumn = new LinearLayout(this);
+        fuelGapV = formulaCell(gapColumn, R.string.fuel_gap_v,
                 prefs.getString("fuel.gapV", String.valueOf(SceneConfig.FUEL_GAP_V)), NUMBER);
-        shown.addView(gaps, margin(6));
-        shown.addView(hint(R.string.fuel_gap_hint));
+        shown.addView(gapColumn, margin(6));
+        TextView gapHint = hint("");
+        shown.addView(gapHint);
+        Runnable layout = () -> {
+            boolean stacked = fuelStacked.isChecked();
+            gapRow.setVisibility(stacked ? View.GONE : View.VISIBLE);
+            gapColumn.setVisibility(stacked ? View.VISIBLE : View.GONE);
+            gapHint.setText(stacked ? R.string.fuel_gap_v_hint : R.string.fuel_gap_h_hint);
+        };
+        layout.run();
+        fuelStacked.setOnCheckedChangeListener((v, value) -> {
+            layout.run();
+            refreshPreview();
+        });
 
         LinearLayout formula = card(page, R.string.fuel_formula_title);
         formula.addView(hint(R.string.fuel_formula_summary));
@@ -611,7 +637,8 @@ public final class MainActivity extends ScaledActivity {
         config.fuelLiters = fuelLiters.isChecked();
         config.fuelFree = fuelFree.isChecked();
         config.fuelPlate = fuelPlate.isChecked();
-        config.fuelLabels = fuelLabels.isChecked();
+        config.fuelLabelLiters = fuelLabelLiters.getText().toString().trim();
+        config.fuelLabelFree = fuelLabelFree.getText().toString().trim();
         config.fuelStacked = fuelStacked.isChecked();
         if (config.fuel.enabled) {
             config.fuelMultiplier = decimal(fuelMultiplier, "Топливо: множитель");
@@ -739,7 +766,8 @@ public final class MainActivity extends ScaledActivity {
         edit.putBoolean("fuel.liters", fuelLiters.isChecked())
                 .putBoolean("fuel.free", fuelFree.isChecked())
                 .putBoolean("fuel.plate", fuelPlate.isChecked())
-                .putBoolean("fuel.labels", fuelLabels.isChecked())
+                .putString("fuel.labelLiters", fuelLabelLiters.getText().toString())
+                .putString("fuel.labelFree", fuelLabelFree.getText().toString())
                 .putBoolean("fuel.stacked", fuelStacked.isChecked())
                 .putString("fuel.gapH", fuelGapH.getText().toString())
                 .putString("fuel.gapV", fuelGapV.getText().toString())
