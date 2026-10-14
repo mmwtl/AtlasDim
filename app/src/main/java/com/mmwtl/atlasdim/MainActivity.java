@@ -14,6 +14,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
@@ -61,6 +62,7 @@ public final class MainActivity extends ScaledActivity {
     private static final SceneConfig.Kind[] KINDS = {SceneConfig.Kind.CLOCK,
             SceneConfig.Kind.FUEL, SceneConfig.Kind.BACKGROUND};
     private static final int TAB_SYSTEM = 3;
+    private static final int KEEP_REPORTS = 20;
     private static final int[] TAB_LABELS = {R.string.tab_clock, R.string.tab_fuel,
             R.string.tab_background, R.string.tab_system};
     private boolean ready;
@@ -266,6 +268,12 @@ public final class MainActivity extends ScaledActivity {
     private void buildBackgroundTab(LinearLayout page) {
         SharedPreferences prefs = prefs();
         background = new LayerEditor(page, previewConfig.background);
+        if (SceneConfig.SINGLE_LAYER) {
+            background.enabled.setChecked(false);
+            background.enabled.setEnabled(false);
+            ((LinearLayout) background.enabled.getParent()).addView(
+                    hint(getString(R.string.background_single_layer, Build.MODEL)), 1);
+        }
         LinearLayout picture = card(page, R.string.background_picture_title);
         HorizontalScrollView strip = new HorizontalScrollView(this);
         strip.setHorizontalScrollBarEnabled(false);
@@ -314,7 +322,9 @@ public final class MainActivity extends ScaledActivity {
         alphaRow.addView(alphaValue, new LinearLayout.LayoutParams(dp(56), -2));
         picture.addView(alphaRow);
         grid = toggle(picture, R.string.background_grid, prefs.getBoolean("grid", false));
-        picture.addView(hint(R.string.background_hint));
+        if (!SceneConfig.SINGLE_LAYER) {
+            picture.addView(hint(R.string.background_hint));
+        }
     }
 
     private void buildSystemTab(LinearLayout page) {
@@ -439,13 +449,16 @@ public final class MainActivity extends ScaledActivity {
                     return;
                 }
                 diagButton.setEnabled(true);
-                diagStatus.setText(Diagnostics.summary(report));
-                showReport(report);
+                File file = saveReport(report);
+                String summary = Diagnostics.summary(report);
+                diagStatus.setText(file == null ? summary
+                        : summary + getString(R.string.diag_saved, file.getPath()));
+                showReport(report, file);
             });
         }, "AtlasDim-diag").start();
     }
 
-    private void showReport(String report) {
+    private void showReport(String report, File file) {
         TextView text = Ui.text(this, report, 12, Ui.TEXT);
         text.setTypeface(Typeface.MONOSPACE);
         text.setTextIsSelectable(true);
@@ -455,22 +468,25 @@ public final class MainActivity extends ScaledActivity {
         wide.addView(text);
         ScrollView body = new ScrollView(this);
         body.addView(wide);
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder builder = new AlertDialog.Builder(this,
+                android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle(R.string.diag_title)
                 .setView(body)
-                .setPositiveButton(R.string.diag_copy, (d, w) -> {
+                .setNeutralButton(R.string.diag_copy, (d, w) -> {
                     ClipboardManager clipboard = getSystemService(ClipboardManager.class);
                     clipboard.setPrimaryClip(ClipData.newPlainText("Atlas Dim", report));
                     Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show();
                 })
-                .setNeutralButton(R.string.diag_save, (d, w) -> saveReport(report))
-                .setNegativeButton(R.string.donate_close, null)
-                .show();
-        sized(dialog);
+                .setNegativeButton(R.string.donate_close, null);
+        if (file != null) {
+            builder.setPositiveButton(R.string.diag_share, (d, w) -> shareReport(file));
+        }
+        sized(builder.show());
     }
 
-    private void saveReport(String report) {
-        File dir = new File(getExternalFilesDir(null), "diagnostics");
+    /** Файл в Android/data/…/files/diagnostics; хранятся последние {@link #KEEP_REPORTS}. */
+    private File saveReport(String report) {
+        File dir = ReportProvider.dir(this);
         File file = new File(dir, "atlasdim-diag-" + new SimpleDateFormat("yyyyMMdd-HHmmss",
                 Locale.US).format(new Date()) + ".txt");
         try {
@@ -480,10 +496,34 @@ public final class MainActivity extends ScaledActivity {
             try (FileOutputStream out = new FileOutputStream(file)) {
                 out.write(report.getBytes(StandardCharsets.UTF_8));
             }
-            Toast.makeText(this, getString(R.string.diag_saved, file.getPath()),
-                    Toast.LENGTH_LONG).show();
         } catch (IOException e) {
             Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+            return null;
+        }
+        File[] old = dir.listFiles((d, name) -> name.startsWith("atlasdim-diag-"));
+        if (old != null && old.length > KEEP_REPORTS) {
+            Arrays.sort(old); // Время в имени: по алфавиту — от старых к новым.
+            for (int i = 0; i < old.length - KEEP_REPORTS; i++) {
+                //noinspection ResultOfMethodCallIgnored
+                old[i].delete();
+            }
+        }
+        return file;
+    }
+
+    private void shareReport(File file) {
+        Uri uri = ReportProvider.uri(file);
+        Intent send = new Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, file.getName())
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        // Через ClipData разрешение на чтение получает и системное окно выбора (предпросмотр).
+        send.setClipData(ClipData.newRawUri(file.getName(), uri));
+        try {
+            startActivity(Intent.createChooser(send, getString(R.string.diag_share)));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.diag_share_none, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -877,6 +917,9 @@ public final class MainActivity extends ScaledActivity {
             card.addView(port);
             display = parse(prefs.getString(key + "display", null), defaults.display);
             z = parse(prefs.getString(key + "z", null), defaults.z);
+            if (display == 1 && z >= SceneConfig.LAMPS_Z) {
+                z = defaults.z; // Черновик с прежним пределом ламп (z=9 на G426_J1).
+            }
 
             card.addView(label(R.string.layer_display));
             LinearLayout segments = new LinearLayout(MainActivity.this);
@@ -982,9 +1025,12 @@ public final class MainActivity extends ScaledActivity {
             for (int i = 0; i < 3; i++) {
                 Ui.setSegmentSelected(MainActivity.this, displays[i], display == i + 1);
             }
-            zHint.setText(display == 2 ? R.string.layer_z_hint_dpy2
+            boolean single = SceneConfig.SINGLE_LAYER;
+            zHint.setText(display == 2 ? single ? R.string.layer_z_hint_dpy2_single
+                            : R.string.layer_z_hint_dpy2
                     : display == 3 ? R.string.layer_z_hint_dpy3
                     : defaults.background ? R.string.layer_z_hint_dpy1_background
+                    : single ? R.string.layer_z_hint_dpy1_single
                     : R.string.layer_z_hint_dpy1);
         }
 

@@ -35,6 +35,8 @@
     <string name="layer_display_3">3 · Центр</string>
     <string name="layer_z">Слой z</string>
     <string name="layer_z_hint_dpy1">штатно: приборы 3, лампы 10 — держите ниже 10</string>
+    <string name="layer_z_hint_dpy1_single">штатно: лампы 9 и 10 — держите ниже 9</string>
+    <string name="layer_z_hint_dpy2_single">штатно: приборы и фон одним слоем z=3</string>
     <string name="layer_z_hint_dpy1_background">штатно: приборы 3 — ниже 3, чтобы быть под ними</string>
     <string name="layer_z_hint_dpy2">штатный фон z=0 — выше 0, чтобы быть поверх</string>
     <string name="layer_z_hint_dpy3">z штатных окон центра не сняты</string>
@@ -66,6 +68,7 @@
     <string name="background_color_hint">Цвет #RRGGBB</string>
     <string name="background_opacity">Непрозрачность</string>
     <string name="background_grid">Тестовая сетка 100 px</string>
+    <string name="background_single_layer">На %1$s приборы и их фон штатно рисуются одним слоем: свой фон закроет все приборы, поэтому он недоступен.</string>
     <string name="background_hint">Фон на dpy-2: поверх штатного фона, под приборами. Штатный слой приборов может частично его закрывать.</string>
     <string name="background_delete">Удалить картинку из списка?</string>
     <string name="background_delete_confirm">Удалить</string>
@@ -105,8 +108,9 @@
     <string name="diag_running">Запуск…</string>
     <string name="diag_copy">Копировать</string>
     <string name="diag_copied">Отчёт скопирован</string>
-    <string name="diag_save">Сохранить</string>
-    <string name="diag_saved">Отчёт сохранён: %1$s</string>
+    <string name="diag_share">Поделиться</string>
+    <string name="diag_share_none">Нет приложений, которым можно отправить файл</string>
+    <string name="diag_saved">\nФайл: %1$s</string>
     <string name="about_title">О приложении</string>
     <string name="about_text">Atlas Dim %1$s — свои часы, топливо и фон на приборке ГУ G636 через QNX.</string>
 

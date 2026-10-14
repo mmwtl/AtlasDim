@@ -40,6 +40,13 @@
             android:name=".SceneService"
             android:exported="false" />
 
+        <!-- Отчёты диагностики для «Поделиться»: только чтение по выданному разрешению. -->
+        <provider
+            android:name=".ReportProvider"
+            android:authorities="${applicationId}.reports"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">
