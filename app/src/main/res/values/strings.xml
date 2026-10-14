@@ -30,6 +30,7 @@
 
     <string name="layer_port">TCP %1$d</string>
     <string name="layer_display">Экран QNX</string>
+    <string name="layer_placement">Экран QNX и слой: dpy-%1$d, z=%2$d</string>
     <string name="layer_display_1">1 · Приборы</string>
     <string name="layer_display_2">2 · Фон приборки</string>
     <string name="layer_z">Слой z</string>

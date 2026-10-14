@@ -334,9 +334,10 @@ public final class MainActivity extends ScaledActivity {
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         password.setHint(built ? R.string.link_password_built : R.string.link_password_missing);
         manual.addView(hint(R.string.link_ports_hint));
-        setExpanded(manualHead, manual, !built);
+        setExpanded(manualHead, manual, getString(R.string.link_manual), !built);
         manualHead.setOnClickListener(v ->
-                setExpanded(manualHead, manual, manual.getVisibility() != View.VISIBLE));
+                setExpanded(manualHead, manual, getString(R.string.link_manual),
+                        manual.getVisibility() != View.VISIBLE));
 
         LinearLayout diag = card(page, R.string.diag_title);
         diag.addView(hint(R.string.diag_hint));
@@ -396,9 +397,8 @@ public final class MainActivity extends ScaledActivity {
         support.addView(donate);
     }
 
-    private void setExpanded(TextView head, View body, boolean expanded) {
-        head.setText(getString(R.string.link_manual_toggle, expanded ? "▾" : "▸",
-                getString(R.string.link_manual)));
+    private void setExpanded(TextView head, View body, String title, boolean expanded) {
+        head.setText(getString(R.string.link_manual_toggle, expanded ? "▾" : "▸", title));
         body.setVisibility(expanded ? View.VISIBLE : View.GONE);
     }
 
@@ -871,6 +871,8 @@ public final class MainActivity extends ScaledActivity {
         final TextView[] displays = new TextView[2];
         final TextView zValue;
         final TextView zHint;
+        final TextView placementHead;
+        final LinearLayout placement;
         final EditText x;
         final EditText y;
         final EditText w;
@@ -902,7 +904,14 @@ public final class MainActivity extends ScaledActivity {
                 z = defaults.z; // Черновик с прежним пределом ламп (z=9 на G426_J1).
             }
 
-            card.addView(label(R.string.layer_display));
+            // Экран и z под катом: значения по умолчанию проверены на машине.
+            placementHead = label(R.string.layer_display);
+            placementHead.setClickable(true);
+            placementHead.setPadding(0, dp(8), 0, dp(8));
+            card.addView(placementHead);
+            placement = column();
+            card.addView(placement);
+            placementHead.setOnClickListener(v -> paintPlacement(placement.getVisibility() != View.VISIBLE));
             LinearLayout segments = new LinearLayout(MainActivity.this);
             int[] names = {R.string.layer_display_1, R.string.layer_display_2};
             for (int i = 0; i < names.length; i++) {
@@ -917,7 +926,7 @@ public final class MainActivity extends ScaledActivity {
                 Ui.addSegment(segments, segment);
                 displays[i] = segment;
             }
-            card.addView(segments, margin(6));
+            placement.addView(segments, margin(6));
 
             LinearLayout zRow = new LinearLayout(MainActivity.this);
             zRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -933,9 +942,10 @@ public final class MainActivity extends ScaledActivity {
             zHint = Ui.text(MainActivity.this, "", 13, Ui.TEXT_SECONDARY);
             zHint.setPadding(dp(12), 0, 0, 0);
             zRow.addView(zHint, new LinearLayout.LayoutParams(0, -2, 1));
-            card.addView(zRow, margin(14));
+            placement.addView(zRow, margin(14));
             zValue.setText(String.valueOf(z));
             paintSegments();
+            paintPlacement(display != defaults.display || z != defaults.z);
 
             card.addView(label(R.string.layer_geometry));
             LinearLayout row1 = new LinearLayout(MainActivity.this);
@@ -998,11 +1008,17 @@ public final class MainActivity extends ScaledActivity {
             refreshPreview();
         }
 
+        /** Заголовок ката показывает текущие экран и z и в свёрнутом виде. */
+        private void paintPlacement(boolean expanded) {
+            setExpanded(placementHead, placement, getString(R.string.layer_placement, display, z), expanded);
+        }
+
         /** Сегменты экрана и подсказка о штатных z именно на выбранном экране. */
         private void paintSegments() {
             for (int i = 0; i < displays.length; i++) {
                 Ui.setSegmentSelected(MainActivity.this, displays[i], display == i + 1);
             }
+            paintPlacement(placement.getVisibility() == View.VISIBLE);
             boolean single = SceneConfig.SINGLE_LAYER;
             zHint.setText(display == 2 ? single ? R.string.layer_z_hint_dpy2_single
                             : R.string.layer_z_hint_dpy2
@@ -1019,6 +1035,7 @@ public final class MainActivity extends ScaledActivity {
             b.setOnClickListener(v -> {
                 z = Math.max(-100, Math.min(100, z + delta));
                 zValue.setText(String.valueOf(z));
+                paintPlacement(true);
                 refreshPreview();
             });
             b.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(44)));
