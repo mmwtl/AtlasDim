@@ -1,0 +1,18 @@
+*.apk
+*.aab
+.gradle/
+build/
+local.properties
+.idea/
+.DS_Store
+*.iml
+__pycache__/
+# Рендеры и исходные PNG фонов — крупные бинарники; в приложении лежат WebP.
+output/**/*.png
+
+# Подпись релиза — локальные файлы, общий ключ проектов Atlas.
+secure.signing.gradle
+*.jks
+
+# Референсы — только локально: декомпилированный закрытый код, VIN и серийники ГУ.
+reference/

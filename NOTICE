@@ -1,0 +1,19 @@
+Atlas Dim
+Copyright (c) 2026 mmwtl
+
+Принцип работы взят из проекта ANHUD (https://github.com/g992/ANHUD):
+свой процесс на QNX открывает окно QNX Screen и получает кадры из Android
+по TCP (протокол gcp/1).
+
+Компоненты на основе ANHUD:
+
+- qnx/ghudbridgelited-dim — бинарник ghudbridgelited из ANHUD
+  (third_party/ghudbridgelited), пропатчен под приборку: дисплей, лимиты
+  размера окна, позиция окна в HELLO;
+- app/src/main/java/com/mmwtl/atlasdim/Gcp.java, QnxShell.java, DimDaemon.java —
+  перенесены на Java из app/src/main/java/com/g992/anhud/hudbridge/
+  (Gcp.kt, QnxShell.kt, DaemonInstaller.kt).
+
+Лицензия MIT из файла LICENSE распространяется только на собственный код
+Atlas Dim. На перечисленные компоненты распространяются условия ANHUD; права
+на них принадлежат авторам ANHUD.

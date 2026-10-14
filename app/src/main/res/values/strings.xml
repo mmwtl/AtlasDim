@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Atlas Dim</string>
+
+    <string name="tab_clock">Часы</string>
+    <string name="tab_fuel">Топливо</string>
+    <string name="tab_background">Фон</string>
+    <string name="tab_system">Система</string>
+
+    <string name="preview_title">Приборка · 1920×532</string>
+    <string name="preview_central">Центральный экран · dpy-3</string>
+    <string name="preview_hint">Перетащите окно пальцем, угол — изменить размер. %1$s · %2$s · %3$s</string>
+    <string name="preview_invalid">%1$s · показан последний корректный вариант</string>
+    <string name="layer_on">%1$s dpy-%2$d z=%3$d</string>
+    <string name="layer_off">%1$s выкл.</string>
+
+    <string name="pill_idle">Не подключено</string>
+    <string name="pill_starting">Запуск…</string>
+    <string name="pill_shown">● На приборке</string>
+    <string name="pill_error">Ошибка</string>
+    <string name="pill_error_retry">Ошибка · повтор</string>
+    <string name="pill_dirty">Есть изменения — примените</string>
+
+    <string name="action_hide">Убрать всё</string>
+    <string name="action_show">Показать / применить</string>
+    <string name="status_idle">Не подключено · предпросмотр работает без QNX</string>
+    <string name="status_stopping">Останавливаю композицию…</string>
+    <string name="status_not_applied">Не применено: %1$s</string>
+    <string name="error_host">Введите хост QNX</string>
+
+    <string name="layer_port">TCP %1$d</string>
+    <string name="layer_display">Экран QNX</string>
+    <string name="layer_display_1">1 · Приборы</string>
+    <string name="layer_display_2">2 · Фон приборки</string>
+    <string name="layer_display_3">3 · Центр</string>
+    <string name="layer_z">Слой z</string>
+    <string name="layer_z_hint_dpy1">штатно: приборы 3, лампы 10 — держите ниже 10</string>
+    <string name="layer_z_hint_dpy1_background">штатно: приборы 3 — ниже 3, чтобы быть под ними</string>
+    <string name="layer_z_hint_dpy2">штатный фон z=0 — выше 0, чтобы быть поверх</string>
+    <string name="layer_z_hint_dpy3">z штатных окон центра не сняты</string>
+    <string name="layer_geometry">Положение и размер, px</string>
+    <string name="layer_width">Ш</string>
+    <string name="layer_height">В</string>
+    <string name="place_full">Во весь экран</string>
+    <string name="place_bottom_left">Слева внизу</string>
+    <string name="place_center">По центру</string>
+    <string name="place_top_right">Справа вверху</string>
+    <string name="place_reset">Сброс</string>
+
+    <string name="clock_look_title">Вид часов</string>
+    <string name="clock_seconds">Показывать секунды</string>
+    <string name="digits_plate">Тёмная подложка под цифрами</string>
+
+    <string name="fuel_shown_title">Что показывать</string>
+    <string name="fuel_liters">Залито, л</string>
+    <string name="fuel_free">Свободно, л</string>
+    <string name="fuel_formula_title">Формула</string>
+    <string name="fuel_formula_summary">Литры = датчик × множитель + смещение</string>
+    <string name="fuel_multiplier">Множитель</string>
+    <string name="fuel_offset">Смещение</string>
+    <string name="fuel_formula_hint">Датчик Fuel Percentage (0–100) из GInputBridge, как в Atlas Climate Widget. По умолчанию бак 54 л: × 0.5 + 4. Без GInputBridge или до первого ответа — «—».</string>
+
+    <string name="background_picture_title">Картинка</string>
+    <string name="background_add">＋\nКартинка</string>
+    <string name="background_add_description">Добавить картинку</string>
+    <string name="background_color_hint">Цвет #RRGGBB</string>
+    <string name="background_opacity">Непрозрачность</string>
+    <string name="background_grid">Тестовая сетка 100 px</string>
+    <string name="background_hint">Фон на dpy-2: поверх штатного фона, под приборами. Штатный слой приборов может частично его закрывать.</string>
+    <string name="background_delete">Удалить картинку из списка?</string>
+    <string name="background_delete_confirm">Удалить</string>
+    <string name="background_delete_failed">Не удалось удалить %1$s</string>
+    <string name="background_own">Своя картинка</string>
+    <string name="background_preset">Фон %1$s</string>
+    <string name="background_chooser">Картинка для фона</string>
+    <string name="background_no_picker">Нет приложения для выбора файлов. Скопируйте картинки в %1$s</string>
+    <string name="background_loading">Загружаю картинку…</string>
+    <string name="background_added">Картинка добавлена · нажмите «Показать / применить»</string>
+    <string name="background_failed">Картинка не загружена: %1$s</string>
+    <string name="gallery_title">Картинка для фона</string>
+    <string name="gallery_empty">Картинок на устройстве не найдено</string>
+    <string name="gallery_files">Открыть файлы…</string>
+
+    <string name="link_title">Связь с QNX</string>
+    <string name="link_hint_built">Всё стандартное: %1$s, root, пароль из сборки. Приложение само запускает свои демоны в /tmp и убирает их при остановке.</string>
+    <string name="link_hint_missing">Пароль в сборке не задан (qnx.password в local.properties). Введите его ниже или запустите демоны вручную и выключите автозапуск.</string>
+    <string name="link_auto">Запускать демоны автоматически</string>
+    <string name="link_boot">Возвращать на приборку после загрузки ГУ</string>
+    <string name="link_background_hint">Композиция работает в фоне и без открытого приложения. «Убрать всё» снимает окна и отключает возврат после загрузки.</string>
+    <string name="link_manual">Вручную, если отличается</string>
+    <string name="link_host">Хост QNX</string>
+    <string name="link_password">Пароль root</string>
+    <string name="link_password_built">из сборки</string>
+    <string name="link_password_missing">не задан</string>
+    <string name="link_ports_hint">Без автозапуска приложение подключается к уже работающим демонам: часы — TCP 50210, фон — TCP 50211, топливо — TCP 50212. QNX: dpy-1 — приборы (z=3) и лампы (z=10), dpy-2 — фон приборки, dpy-3 — центральный экран.</string>
+
+    <string name="interface_title">Интерфейс приложения</string>
+    <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>
+    <string name="interface_scale">Масштаб</string>
+
+    <string name="about_title">О приложении</string>
+    <string name="about_text">Atlas Dim %1$s — свои часы, топливо и фон на приборке ГУ G636 через QNX.</string>
+
+    <string name="cancel">Отмена</string>
+
+    <string name="gstore_url" translatable="false">https://disk.yandex.ru/d/bJoMhjqGw8rMtg</string>
+    <string name="gstore_title">Обновления через GStore</string>
+    <string name="gstore_hint">Для автоматического обновления Atlas Dim рекомендую магазин приложений GStore.</string>
+    <string name="gstore_button">Скачать GStore</string>
+    <string name="gstore_message">Установите GStore на головное устройство — он будет сам обновлять Atlas Dim.</string>
+    <string name="donate_url" translatable="false">https://pay.cloudtips.ru/p/5c3a9385</string>
+    <string name="donate_title">Поддержать проект</string>
+    <string name="donate_hint">Приложение бесплатное и останется таким. Если оно вам пригодилось, можно добровольно поддержать его развитие.</string>
+    <string name="donate_button">♥ Поддержать проект</string>
+    <string name="donate_message">Приложение бесплатное и останется таким. Добровольная поддержка помогает развивать его дальше. Спасибо!</string>
+    <string name="donate_scan">Наведите камеру телефона на QR-код</string>
+    <string name="donate_open">Открыть ссылку</string>
+    <string name="donate_close">Закрыть</string>
+    <string name="donate_no_browser">Нет браузера — отсканируйте QR-код телефоном</string>
+
+    <string name="notification_channel">Приборка</string>
+    <string name="notification_text">Окна на приборке</string>
+</resources>

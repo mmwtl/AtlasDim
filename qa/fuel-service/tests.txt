@@ -1,0 +1,14 @@
+PASS layer limits restored, display patch and only owned process names
+PASS fuel formula, text, GInputBridge sensor and saved scene JSON
+PASS Canvas color, transparency, image fill and full 1920x532 frame codec
+PASS preview respects z, physical display order and central-screen isolation
+PASS two ports, frozen config, static background and disconnect rollback
+PASS background stays alive during delayed second handshake
+PASS second-window refusal closes the first window
+PASS background-only mode and explicit stop
+PASS picture-only change goes into the open window without restart
+PASS three repeated clock-only sessions
+PASS fuel window on TCP 49212 redraws only on a new level
+PASS UI apply within limits, refused drafts, background work after exit, stop
+PASS boot start only when active, reconnect after a lost link
+ALL 13 CHECKS PASSED

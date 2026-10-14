@@ -1,0 +1,10 @@
+PASS validation, display patch and only owned process names
+PASS Canvas color, transparency, image fill and full 1920x532 frame codec
+PASS preview respects z, physical display order and central-screen isolation
+PASS two ports, frozen config, static background and disconnect rollback
+PASS background stays alive during delayed second handshake
+PASS second-window refusal closes the first window
+PASS background-only mode and explicit stop
+PASS three repeated clock-only sessions
+PASS UI apply, invalid draft preserves output, Activity exit stops both windows
+ALL 9 CHECKS PASSED
