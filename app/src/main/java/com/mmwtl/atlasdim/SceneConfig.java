@@ -79,7 +79,9 @@ final class SceneConfig {
             enabled = kind == Kind.CLOCK;
             display = background || SINGLE_LAYER ? 2 : 1;
             int top = SINGLE_LAYER ? CLUSTER_Z + 3 : LAMPS_Z;
-            z = background ? 0 : kind == Kind.CLOCK ? top - 1 : top - 2;
+            // Часы на G636 — z=7, под топливом (8).
+            int clockZ = SINGLE_LAYER ? top - 1 : top - 3;
+            z = background ? 0 : kind == Kind.CLOCK ? clockZ : top - 2;
             x = kind == Kind.FUEL ? WIDTH - 300 : 0;
             y = background ? 0 : 482;
             w = background ? WIDTH : kind == Kind.CLOCK ? 100 : 300;
