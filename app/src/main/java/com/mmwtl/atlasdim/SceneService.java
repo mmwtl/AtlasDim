@@ -154,6 +154,10 @@ public final class SceneService extends Service {
                 setState("Рисунок обновлён без перезапуска");
                 return;
             }
+            if (session.reconfigure(config)) {
+                setState("Меняю набор окон без перезапуска…");
+                return;
+            }
             SceneSession old = session;
             session = null;
             old.stop(!old.sameQnx(config));

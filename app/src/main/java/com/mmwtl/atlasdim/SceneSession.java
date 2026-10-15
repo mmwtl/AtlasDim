@@ -12,6 +12,8 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Независимые окна gcp/1 (фон, часы, топливо) с общим запуском, остановкой и откатом при ошибке. */
@@ -34,6 +36,8 @@ final class SceneSession {
      * замена сессии) демоны остаются и без клиента не показывают окна.
      */
     private volatile boolean removeDaemons;
+    /** Новый набор окон для живой сессии; применяет поток сессии ({@link #reconfigure}). */
+    private volatile SceneConfig pending;
     private Thread worker;
 
     interface Listener {
@@ -73,7 +77,7 @@ final class SceneSession {
      */
     boolean update(SceneConfig next) {
         SceneConfig current = config;
-        if (!running || !live || !next.host.equals(current.host)
+        if (!running || !live || pending != null || !next.host.equals(current.host)
                 || !next.password.equals(current.password)) {
             return false;
         }
@@ -84,6 +88,20 @@ final class SceneSession {
         }
         // Окна заметят новый объект на ближайшем такте (≤ 500 мс) и пришлют кадр.
         config = new SceneConfig(next);
+        return true;
+    }
+
+    /**
+     * Меняет набор окон в живой сессии: неизменные окна продолжают показываться,
+     * изменённые и выключенные закрываются, новые открываются после запуска их
+     * демонов по telnet. Возвращает false, если нужен полный перезапуск.
+     */
+    boolean reconfigure(SceneConfig next) {
+        SceneConfig current = config;
+        if (!running || !live || current.password.isEmpty() || !sameQnx(next)) {
+            return false;
+        }
+        pending = new SceneConfig(next);
         return true;
     }
 
@@ -172,6 +190,11 @@ final class SceneSession {
             }
             live = true;
             while (running) {
+                SceneConfig next = pending;
+                if (next != null) {
+                    pending = null;
+                    apply(next);
+                }
                 StringBuilder text = new StringBuilder("Отправлено: ");
                 for (Link link : links) {
                     if (text.length() > 12) {
@@ -214,6 +237,49 @@ final class SceneSession {
             state(why);
             listener.onEnd();
         }
+    }
+
+    /** Поток сессии: telnet только ради новых окон, неизменные окна не закрываются. */
+    private void apply(SceneConfig next) throws IOException, InterruptedException {
+        for (Link link : links) {
+            if (!sameWindow(next.layer(link.layer.kind), link.layer)) {
+                links.remove(link);
+                link.finish();
+            }
+        }
+        config = next;
+        List<SceneConfig.Layer> added = new ArrayList<>();
+        for (SceneConfig.Layer layer : layers()) {
+            if (layer.enabled && !hasLink(layer.kind)) {
+                added.add(layer);
+            }
+        }
+        state("Подключение к QNX по telnet…");
+        DimDaemon.forget(context);
+        try (QnxShell qnx = QnxShell.open(config.host, "root", config.password)) {
+            shell = qnx;
+            checkRunning();
+            // Демоны открытых окон совпадают по командной строке и остаются работать.
+            DimDaemon.prepare(context, qnx, layers(), this::state);
+        } finally {
+            shell = null;
+        }
+        DimDaemon.remember(context, config);
+        for (SceneConfig.Layer layer : added) {
+            Link link = new Link(layer);
+            links.add(link);
+            checkRunning();
+            link.open(false);
+        }
+    }
+
+    private boolean hasLink(SceneConfig.Kind kind) {
+        for (Link link : links) {
+            if (link.layer.kind == kind) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** reusing — демоны могли пропасть (перезагрузка QNX): отказ в подключении не ждём. */

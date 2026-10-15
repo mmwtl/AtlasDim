@@ -134,8 +134,15 @@ final class DimDaemon {
             Progress progress) throws IOException {
         String path = path(layer);
         byte[] bin = withDisplay(asset, layer.display);
+        String sibling = null;
         if (sizeOf(qnx, path) == bin.length) {
             progress.step(path + " уже на месте");
+        } else if ((sibling = sibling(qnx, layer, bin.length)) != null) {
+            // Тот же дисплей — те же байты: копия на QNX вместо передачи с Android.
+            progress.step("копирую " + sibling + " → " + path + "…");
+            must(qnx.exec("cp " + sibling + " " + path + ".new && chmod 755 " + path
+                    + ".new && mv -f " + path + ".new " + path), "cp");
+            checkSize(qnx, path, bin.length);
         } else {
             progress.step("копирую " + path + "…");
             String sharedProblem = checkSharedDirWritable();
@@ -178,6 +185,18 @@ final class DimDaemon {
             qnx.exec(cmd.toString());
         }
         throw new IOException("прежний " + NAME + " не останавливается");
+    }
+
+    /** Файл другой роли для того же дисплея и текущей версии демона, если есть. */
+    private static String sibling(QnxShell qnx, SceneConfig.Layer layer, int size)
+            throws IOException {
+        for (String role : new String[] {"background", "clock", "fuel"}) {
+            String path = "/tmp/" + NAME + "-" + role + layer.display;
+            if (!role.equals(layer.id()) && sizeOf(qnx, path) == size) {
+                return path;
+            }
+        }
+        return null;
     }
 
     private static int sizeOf(QnxShell qnx, String path) throws IOException {
