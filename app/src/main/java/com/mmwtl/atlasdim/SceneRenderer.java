@@ -87,7 +87,10 @@ final class SceneRenderer {
             canvas.drawRoundRect(0, 0, layer.w, layer.h, radius, radius, paint);
         }
         paint.setColor(Color.WHITE);
-        paint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        Typeface cluster = ClusterFont.typeface(layer.kind == SceneConfig.Kind.FUEL
+                ? config.fuelFont : config.clockFont);
+        paint.setTypeface(cluster != null ? cluster
+                : Typeface.create("sans-serif-medium", Typeface.NORMAL));
         String[] parts = text.split(String.valueOf(PARTS));
         if (parts.length > 1 && config.fuelStacked) {
             drawStacked(canvas, paint, layer, parts, config.fuelGapV);

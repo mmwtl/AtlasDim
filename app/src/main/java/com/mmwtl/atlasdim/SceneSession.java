@@ -51,6 +51,7 @@ final class SceneSession {
     SceneSession(Context context, SceneConfig config, Listener listener) {
         this.context = context.getApplicationContext();
         Backgrounds.init(context);
+        ClusterFont.init(context);
         this.config = new SceneConfig(config);
         this.listener = listener;
     }
@@ -73,12 +74,13 @@ final class SceneSession {
     /**
      * Меняет только рисунок в уже открытых окнах, без telnet и переподключения.
      * Возвращает false, если изменилось то, что требует нового запуска: хост,
-     * набор окон, дисплей, z (параметры процесса демона) или геометрия (HELLO).
+     * набор окон, дисплей, z (параметры процесса демона), геометрия (HELLO) или нужен
+     * ещё не забранный шрифт приборки.
      */
     boolean update(SceneConfig next) {
         SceneConfig current = config;
         if (!running || !live || pending != null || !next.host.equals(current.host)
-                || !next.password.equals(current.password)) {
+                || !next.password.equals(current.password) || ClusterFont.missing(next)) {
             return false;
         }
         for (SceneConfig.Kind kind : SceneConfig.Kind.values()) {
@@ -163,7 +165,7 @@ final class SceneSession {
             config.validate();
             boolean opened = false;
             // Демоны с теми же display/z уже запускались: сначала окна без telnet.
-            if (managed && DimDaemon.launched(context, config)) {
+            if (managed && DimDaemon.launched(context, config) && !ClusterFont.missing(config)) {
                 try {
                     openLinks(true);
                     opened = true;
@@ -181,6 +183,7 @@ final class SceneSession {
                         shell = qnx;
                         checkRunning();
                         DimDaemon.prepare(context, qnx, layers(), this::state);
+                        fetchFont(qnx);
                     } finally {
                         shell = null;
                     }
@@ -239,6 +242,20 @@ final class SceneSession {
         }
     }
 
+    /** Без шрифта приборки окна рисуются системным: сессия из-за него не падает. */
+    private void fetchFont(QnxShell qnx) {
+        if (!ClusterFont.missing(config)) {
+            return;
+        }
+        state("Забираю шрифт приборки с QNX…");
+        try {
+            ClusterFont.fetch(qnx, config);
+        } catch (IOException e) {
+            Log.w(TAG, "шрифт приборки: " + e.getMessage());
+            state("Шрифт приборки не получен: " + e.getMessage());
+        }
+    }
+
     /** Поток сессии: telnet только ради новых окон, неизменные окна не закрываются. */
     private void apply(SceneConfig next) throws IOException, InterruptedException {
         for (Link link : links) {
@@ -261,6 +278,7 @@ final class SceneSession {
             checkRunning();
             // Демоны открытых окон совпадают по командной строке и остаются работать.
             DimDaemon.prepare(context, qnx, layers(), this::state);
+            fetchFont(qnx);
         } finally {
             shell = null;
         }

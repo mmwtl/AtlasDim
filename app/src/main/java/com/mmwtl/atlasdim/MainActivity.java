@@ -93,6 +93,7 @@ public final class MainActivity extends ScaledActivity {
     private final List<View> panels = new ArrayList<>();
     private Switch seconds;
     private Switch plate;
+    private FontPicker clockFont;
     private Switch grid;
     private EditText color;
     private SeekBar alpha;
@@ -103,6 +104,7 @@ public final class MainActivity extends ScaledActivity {
     private Switch fuelLiters;
     private Switch fuelFree;
     private Switch fuelPlate;
+    private FontPicker fuelFont;
     private EditText fuelLabelLiters;
     private EditText fuelLabelFree;
     private Switch fuelUnits;
@@ -118,6 +120,7 @@ public final class MainActivity extends ScaledActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Backgrounds.init(this);
+        ClusterFont.init(this);
         SharedPreferences prefs = prefs();
         fill = prefs.getString("fill", Backgrounds.ASSET + "c02-neon-horizon.webp");
 
@@ -246,6 +249,7 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout look = card(page, R.string.clock_look_title);
         seconds = toggle(look, R.string.clock_seconds, prefs.getBoolean("seconds", false));
         plate = toggle(look, R.string.digits_plate, prefs.getBoolean("plate", false));
+        clockFont = new FontPicker(look, prefs.getInt("clockFont", ClusterFont.SYSTEM));
     }
 
     private void buildFuelTab(LinearLayout page) {
@@ -257,6 +261,7 @@ public final class MainActivity extends ScaledActivity {
         fuelStacked = toggle(shown, R.string.fuel_stacked, prefs.getBoolean("fuel.stacked", false));
         fuelUnits = toggle(shown, R.string.fuel_units, prefs.getBoolean("fuel.units", true));
         fuelPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("fuel.plate", false));
+        fuelFont = new FontPicker(shown, prefs.getInt("fuel.font", ClusterFont.SYSTEM));
         LinearLayout digitsRow = new LinearLayout(this);
         fuelDigits = formulaCell(digitsRow, R.string.fuel_digits,
                 prefs.getString("fuel.digits", "0"), NUMBER);
@@ -644,6 +649,7 @@ public final class MainActivity extends ScaledActivity {
         config.fuelLiters = fuelLiters.isChecked();
         config.fuelFree = fuelFree.isChecked();
         config.fuelPlate = fuelPlate.isChecked();
+        config.fuelFont = fuelFont.font;
         config.fuelLabelLiters = fuelLabelLiters.getText().toString().trim();
         config.fuelLabelFree = fuelLabelFree.getText().toString().trim();
         config.fuelUnits = fuelUnits.isChecked();
@@ -657,6 +663,7 @@ public final class MainActivity extends ScaledActivity {
         }
         config.seconds = seconds.isChecked();
         config.plate = plate.isChecked();
+        config.clockFont = clockFont.font;
         config.grid = grid.isChecked();
         config.fill = fill;
         config.alpha = alpha.getProgress();
@@ -690,6 +697,8 @@ public final class MainActivity extends ScaledActivity {
             previewStatus.setTextColor(Ui.ERROR);
         }
         preview.update(previewConfig, valid);
+        clockFont.paint();
+        fuelFont.paint();
         if (SceneService.isActive(this) && !dirty) {
             dirty = true;
             setPill(getString(R.string.pill_dirty), PENDING);
@@ -738,6 +747,9 @@ public final class MainActivity extends ScaledActivity {
     /** Состояние сервиса — на главном потоке. */
     private void onSceneState(String state) {
         status.setText(state);
+        // Шрифт приборки мог только что загрузиться с QNX.
+        clockFont.paint();
+        fuelFont.paint();
         boolean failed = state.startsWith("Ошибка") || state.contains("потеряна");
         status.setTextColor(failed ? Ui.ERROR : Ui.TEXT_SECONDARY);
         if (dirty) {
@@ -775,6 +787,7 @@ public final class MainActivity extends ScaledActivity {
         edit.putBoolean("fuel.liters", fuelLiters.isChecked())
                 .putBoolean("fuel.free", fuelFree.isChecked())
                 .putBoolean("fuel.plate", fuelPlate.isChecked())
+                .putInt("fuel.font", fuelFont.font)
                 .putString("fuel.labelLiters", fuelLabelLiters.getText().toString())
                 .putString("fuel.labelFree", fuelLabelFree.getText().toString())
                 .putBoolean("fuel.units", fuelUnits.isChecked())
@@ -785,6 +798,7 @@ public final class MainActivity extends ScaledActivity {
                 .putString("fuel.multiplier", fuelMultiplier.getText().toString())
                 .putString("fuel.offset", fuelOffset.getText().toString());
         edit.putBoolean("seconds", seconds.isChecked()).putBoolean("plate", plate.isChecked())
+                .putInt("clockFont", clockFont.font)
                 .putBoolean("grid", grid.isChecked()).putString("color", color.getText().toString())
                 .putString("alpha", String.valueOf(alpha.getProgress())).putString("fill", fill).apply();
     }
@@ -945,6 +959,45 @@ public final class MainActivity extends ScaledActivity {
                         e.getMessage())));
             }
         }, "atlasdim-import").start();
+    }
+
+    // ---- Шрифт цифр ----
+
+    /** Системный или одно из начертаний GeelyBCTF штатной приборки; под выбором — загружен ли он. */
+    private final class FontPicker {
+        private final int[] names = {R.string.font_system, R.string.font_regular,
+                R.string.font_medium, R.string.font_bold};
+        private final TextView[] segments = new TextView[names.length];
+        private final TextView hint;
+        int font;
+
+        FontPicker(LinearLayout parent, int initial) {
+            font = initial >= 0 && initial < names.length ? initial : ClusterFont.SYSTEM;
+            parent.addView(label(R.string.font_title));
+            LinearLayout row = new LinearLayout(MainActivity.this);
+            for (int i = 0; i < names.length; i++) {
+                int value = i;
+                segments[i] = Ui.segment(MainActivity.this, names[i]);
+                segments[i].setOnClickListener(v -> {
+                    font = value;
+                    paint();
+                    refreshPreview();
+                });
+                Ui.addSegment(row, segments[i]);
+            }
+            parent.addView(row, margin(6));
+            hint = hint("");
+            parent.addView(hint);
+            paint();
+        }
+
+        void paint() {
+            for (int i = 0; i < segments.length; i++) {
+                Ui.setSegmentSelected(MainActivity.this, segments[i], i == font);
+            }
+            hint.setText(font == ClusterFont.SYSTEM ? R.string.font_system_hint
+                    : ClusterFont.saved(font) ? R.string.font_saved_hint : R.string.font_missing_hint);
+        }
     }
 
     // ---- Редактор слоя ----

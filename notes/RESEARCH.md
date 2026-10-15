@@ -304,3 +304,30 @@ dpy-2 с z=4 закрывает всю приборку целиком. Моде
   на машине**: топливо на dpy-2 поверх штатного слоя выводится, маленькое окно
   закрывает только свой прямоугольник;
 - выбор раскладки придётся делать по модели (или по окнам из диагностики).
+
+## 10. Шрифт штатной приборки — GeelyBCTF
+
+Приборка (Kanzi, `cluster-hmi`) берёт шрифты из
+`/apps/cluster/FX11_J1/bin/hmi/FX11_J1/ClusterHMI/resource.kzb` (110 МБ): по
+`resource.kzb.txt` там `GeelyBCTF-{Regular,Bold,Extralight,Switches}.ttf`,
+Alibaba PuHuiTi и `GKUI21 Puhui {Regular,Bold}.ttf`. Отдельных TTF на QNX нет
+(кроме DroidSansFallback у AVM). Температура за бортом — текст
+`ETCRoot/Tempture/TempValue` в `etc.kzb`, он ссылается на
+`kzb://resource/.../GeelyBCTF-Bold.ttf` и `Style_GeelyBCTF_Regular`. По фото ближе
+всех GeelyBCTF Switches (толщина между Regular и Bold), Bold на приборке жирнее.
+
+TTF лежат в kzb целиком (по сигнатуре `00 01 00 00` и таблице каталога):
+
+| Файл | Смещение | Размер | SHA-256 |
+|---|---|---|---|
+| GeelyBCTF Regular | `0x6918b20` | 490032 | `50c7cbf7…547f755` |
+| GeelyBCTF Switches | `0x6990558` | 82312 | `f73a22cf…6c2f1d` |
+| GeelyBCTF Bold | `0x68935f0` | 463544 | `f7165f21…a9a27f8` |
+
+Кириллицы в GeelyBCTF нет (она в 9-МБ GKUI21 PuHuiTi). Шрифт закрытый — в
+репозиторий и APK не входит: AtlasDim по выбору пользователя один раз вырезает
+начертание через telnet (`dd bs=8 skip=… | openssl base64`, только чтение),
+проверяет SHA-256 и хранит в файлах приложения (`ClusterFont`).
+
+Попутно: файлы, созданные на QNX в `/shared`, Android видит в списке, но открыть
+не может (ENOENT) — обратно с QNX через шару не забрать, только через telnet.

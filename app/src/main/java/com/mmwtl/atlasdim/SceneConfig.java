@@ -28,6 +28,9 @@ final class SceneConfig {
     boolean unrestricted;
     boolean seconds;
     boolean plate = true;
+    /** Шрифт цифр: системный или штатной приборки ({@link ClusterFont}), отдельно для часов и топлива. */
+    int clockFont = ClusterFont.SYSTEM;
+    int fuelFont = ClusterFont.SYSTEM;
     boolean grid = true;
     int color = 0xff10243a;
     int alpha = 255;
@@ -169,6 +172,8 @@ final class SceneConfig {
         }
         seconds = other.seconds;
         plate = other.plate;
+        clockFont = other.clockFont;
+        fuelFont = other.fuelFont;
         grid = other.grid;
         color = other.color;
         alpha = other.alpha;
@@ -243,6 +248,7 @@ final class SceneConfig {
         try {
             JSONObject json = new JSONObject().put("host", host).put("password", password)
                     .put("seconds", seconds).put("plate", plate).put("grid", grid)
+                    .put("clockFont", clockFont).put("fuelFont", fuelFont)
                     .put("color", color).put("alpha", alpha).put("fill", fill)
                     .put("fuelLiters", fuelLiters).put("fuelFree", fuelFree)
                     .put("fuelPlate", fuelPlate).put("fuelMultiplier", fuelMultiplier)
@@ -279,6 +285,8 @@ final class SceneConfig {
         config.password = json.optString("password", config.password);
         config.seconds = json.optBoolean("seconds", config.seconds);
         config.plate = json.optBoolean("plate", config.plate);
+        config.clockFont = json.optInt("clockFont", config.clockFont);
+        config.fuelFont = json.optInt("fuelFont", config.fuelFont);
         config.grid = json.optBoolean("grid", config.grid);
         config.color = json.optInt("color", config.color);
         config.alpha = json.optInt("alpha", config.alpha);

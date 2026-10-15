@@ -51,6 +51,14 @@
     <string name="clock_look_title">Вид часов</string>
     <string name="clock_seconds">Показывать секунды</string>
     <string name="digits_plate">Тёмная подложка под цифрами</string>
+    <string name="font_title">Шрифт</string>
+    <string name="font_system">Системный</string>
+    <string name="font_regular">Тонкий</string>
+    <string name="font_medium">Средний</string>
+    <string name="font_bold">Жирный</string>
+    <string name="font_system_hint">Системный шрифт Android.</string>
+    <string name="font_saved_hint">GeelyBCTF штатной приборки, шрифт уже в приложении. Русские буквы — системным шрифтом.</string>
+    <string name="font_missing_hint">GeelyBCTF штатной приборки. Ещё не загружен: заберётся с QNX один раз при «Показать / применить», до этого — системный.</string>
 
     <string name="fuel_shown_title">Что показывать</string>
     <string name="fuel_liters">Залито, л</string>
