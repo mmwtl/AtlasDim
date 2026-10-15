@@ -15,9 +15,12 @@ import java.util.List;
 /**
  * Запуск/остановка ghudbridgelited-dim на QNX. По образцу
  * DaemonInstaller.kt из ANHUD (https://github.com/g992/ANHUD): бинарник из assets
- * копируется в /tmp через NFS-шару (или набирается через telnet, если шары
- * нет) и запускается в фоне. В системе QNX ничего не меняется; /tmp
+ * копируется в /tmp и запускается в фоне. В системе QNX ничего не меняется; /tmp
  * очищается при перезагрузке — после загрузки ГУ демоны заново кладёт SceneService.
+ * Копия под каждый дисплей хранится в NFS-шаре между загрузками: для QNX /shared —
+ * свой диск, поэтому после перезагрузки Android в копировании не участвует (его
+ * монтирование шары может быть ещё не готово). Telnet-набивка — только если файла
+ * в шаре нет и записать его туда не удалось.
  */
 final class DimDaemon {
     private static final String TAG = "AtlasDim";
@@ -28,7 +31,8 @@ final class DimDaemon {
     private static final String SHARED_ANDROID = "/data/vendor/nfs/shared";
     private static final String SHARED_QNX = "/shared";
     private static final int TELNET_LINE_MAX = 200;
-    private static final int TELNET_BATCH_LINES = 40;
+    // Больше ~2 КБ за раз терминал QNX теряет часть ввода (копия выходила короче).
+    private static final int TELNET_BATCH_LINES = 8;
     private static final long TELNET_BATCH_TIMEOUT_MS = 60000;
     private static final String KEY_LAUNCHED = "daemons";
 
@@ -144,14 +148,33 @@ final class DimDaemon {
                     + ".new && mv -f " + path + ".new " + path), "cp");
             checkSize(qnx, path, bin.length);
         } else {
-            progress.step("копирую " + path + "…");
-            String sharedProblem = checkSharedDirWritable();
+            String stored = SHARED_QNX + "/" + storedName(layer.display);
+            String sharedProblem = null;
+            if (!storedValid(qnx, stored, bin)) {
+                progress.step("кладу демон в шару…");
+                sharedProblem = checkSharedDirWritable();
+                if (sharedProblem == null) {
+                    try {
+                        storeInShared(qnx, bin, layer.display);
+                    } catch (IOException e) {
+                        sharedProblem = e.getMessage();
+                    }
+                }
+            }
             if (sharedProblem == null) {
-                copyViaShared(qnx, bin, path);
+                progress.step("копирую " + stored + " → " + path + "…");
+                must(qnx.exec("cp " + stored + " " + path + ".new && chmod 755 " + path
+                        + ".new && mv -f " + path + ".new " + path), "cp");
+                checkSize(qnx, path, bin.length);
             } else {
                 Log.w(TAG, "daemon: шара: " + sharedProblem + " — копирую через telnet");
                 progress.step(sharedProblem + "; передаю через telnet…");
-                copyViaTelnet(qnx, bin, path);
+                try {
+                    copyViaTelnet(qnx, bin, path);
+                } catch (IOException e) {
+                    progress.step(e.getMessage() + "; повторяю…");
+                    copyViaTelnet(qnx, bin, path);
+                }
             }
         }
         String version = qnx.exec(path + " --version 2>&1").output;
@@ -244,27 +267,54 @@ final class DimDaemon {
         }
     }
 
-    private static void copyViaShared(QnxShell qnx, byte[] bytes, String path)
+    /** Копия демона этой версии APK для дисплея: живёт в шаре между загрузками. */
+    private static String storedName(int display) {
+        return NAME + "-" + BuildConfig.VERSION_CODE + "-d" + display;
+    }
+
+    /** Файл в шаре проверяет сама QNX: размер и SHA-256 совпадают с нужным бинарником. */
+    private static boolean storedValid(QnxShell qnx, String stored, byte[] bin)
             throws IOException {
-        String name = NAME + "-" + Long.toHexString(System.nanoTime());
-        File shared = new File(SHARED_ANDROID, name);
-        try (FileOutputStream out = new FileOutputStream(shared)) {
-            out.write(bytes);
+        if (sizeOf(qnx, stored) != bin.length) {
+            return false;
         }
-        try {
-            must(qnx.exec("cp " + SHARED_QNX + "/" + name + " " + path + ".new"), "cp");
-            must(qnx.exec("chmod 755 " + path + ".new && mv -f " + path + ".new " + path),
-                    "chmod/mv");
-        } finally {
-            try {
-                qnx.exec("rm -f " + SHARED_QNX + "/" + name);
-            } catch (IOException e) {
-                Log.w(TAG, "daemon: очистка шары: " + e);
-            }
+        String out = qnx.exec("openssl sha256 " + stored).output;
+        return out.contains("= " + ClusterFont.sha256(bin));
+    }
+
+    /**
+     * Пишет копию для дисплея в шару и оставляет её там. Прежние версии и временные
+     * файлы старых сборок (ghudbridgelited-dim-<hex>) удаляются.
+     */
+    private static void storeInShared(QnxShell qnx, byte[] bin, int display)
+            throws IOException {
+        String name = storedName(display);
+        File part = new File(SHARED_ANDROID, name + ".part");
+        try (FileOutputStream out = new FileOutputStream(part)) {
+            out.write(bin);
+        }
+        File target = new File(SHARED_ANDROID, name);
+        //noinspection ResultOfMethodCallIgnored
+        target.delete(); // Битая копия с тем же именем.
+        if (!part.renameTo(target)) {
             //noinspection ResultOfMethodCallIgnored
-            shared.delete();
+            part.delete();
+            throw new IOException("не удалось сохранить " + name + " в шаре");
         }
-        checkSize(qnx, path, bytes.length);
+        // Чистит только Android: файлы, изменённые в /shared со стороны QNX, его NFS-клиент
+        // потом не может ни открыть, ни создать заново (ENOENT), — QNX шару только читает.
+        String current = NAME + "-" + BuildConfig.VERSION_CODE + "-d";
+        File[] files = new File(SHARED_ANDROID).listFiles();
+        for (File file : files == null ? new File[0] : files) {
+            String other = file.getName();
+            if (other.startsWith(NAME + "-") && !other.matches(current + "[1-5]")) {
+                //noinspection ResultOfMethodCallIgnored
+                file.delete();
+            }
+        }
+        if (!storedValid(qnx, SHARED_QNX + "/" + name, bin)) {
+            throw new IOException("копия " + name + " в шаре битая");
+        }
     }
 
     /** `print -n '…' >> file` с восьмеричными escape — на QNX нет base64/printf. */

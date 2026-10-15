@@ -129,7 +129,7 @@ final class ClusterFont {
         return font > SYSTEM && font < FACES.length ? FACES[font] : null;
     }
 
-    private static String sha256(byte[] data) {
+    static String sha256(byte[] data) {
         try {
             StringBuilder sb = new StringBuilder();
             for (byte b : MessageDigest.getInstance("SHA-256").digest(data)) {
