@@ -105,6 +105,12 @@
     <string name="link_hint_built">Всё стандартное: %1$s, root, пароль из сборки. Приложение само запускает свои демоны в /tmp; «Убрать всё» их останавливает.</string>
     <string name="link_hint_missing">Пароль в сборке не задан (qnx.password в local.properties). Введите его ниже: без него демоны не запустить.</string>
     <string name="link_boot">Возвращать на приборку после загрузки ГУ</string>
+    <string name="autostart_label">Надёжный автозапуск Atlas Dim</string>
+    <string name="autostart_description">Возвращает применённую композицию на приборку после загрузки и пробуждения ГУ. Не читает содержимое окон и не выполняет жесты.</string>
+    <string name="autostart_hint">Если после загрузки ГУ композиция не возвращается (так бывает на Ситирее), включите «Надёжный автозапуск Atlas Dim» в специальных возможностях.</string>
+    <string name="autostart_on">Надёжный автозапуск включён в специальных возможностях.</string>
+    <string name="autostart_open">Открыть специальные возможности</string>
+    <string name="autostart_missing">В прошивке нет экрана специальных возможностей</string>
     <string name="link_background_hint">Композиция работает в фоне и без открытого приложения. «Убрать всё» снимает окна и отключает возврат после загрузки.</string>
     <string name="link_manual">Вручную, если отличается</string>
     <string name="link_manual_toggle" translatable="false">%1$s %2$s</string>

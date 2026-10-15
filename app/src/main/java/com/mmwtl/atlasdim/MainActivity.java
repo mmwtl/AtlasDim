@@ -16,6 +16,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -82,6 +83,7 @@ public final class MainActivity extends ScaledActivity {
     private EditText host;
     private EditText password;
     private Switch boot;
+    private TextView autostart;
     private Switch unrestricted;
     private TextView backgroundLocked;
     private Button diagButton;
@@ -157,6 +159,9 @@ public final class MainActivity extends ScaledActivity {
         super.onStart();
         // Окна живут в сервисе; Activity только показывает его состояние.
         SceneService.setListener(this::onSceneState);
+        // Пользователь мог только что вернуться из спецвозможностей.
+        autostart.setText(AutostartService.enabled(this) ? R.string.autostart_on
+                : R.string.autostart_hint);
         fuelSensor = new FuelSensor(this);
         fuelSensor.start();
     }
@@ -379,6 +384,12 @@ public final class MainActivity extends ScaledActivity {
         boot = toggle(link, R.string.link_boot, prefs.getBoolean(SceneService.KEY_BOOT, true));
         boot.setContentDescription("Автозапуск после загрузки");
         link.addView(hint(R.string.link_background_hint));
+        autostart = hint("");
+        link.addView(autostart);
+        Button accessibility = Ui.button(this, R.string.autostart_open);
+        Ui.topMargin(accessibility, 10);
+        accessibility.setOnClickListener(v -> openAccessibility());
+        link.addView(accessibility);
         // Хост и пароль под катом: обычно хватает значений из сборки.
         TextView manualHead = label(R.string.link_manual);
         manualHead.setClickable(true);
@@ -635,6 +646,14 @@ public final class MainActivity extends ScaledActivity {
         }
         background.enabled.setEnabled(!locked);
         backgroundLocked.setVisibility(locked ? View.VISIBLE : View.GONE);
+    }
+
+    private void openAccessibility() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        } catch (ActivityNotFoundException | SecurityException e) {
+            Toast.makeText(this, R.string.autostart_missing, Toast.LENGTH_LONG).show();
+        }
     }
 
     private SceneConfig readConfig() {
