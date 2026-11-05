@@ -24,6 +24,8 @@ final class ClusterFont {
     /** GeelyBCTF Switches — по толщине между Regular и Bold, ближе всех к температуре. */
     static final int MEDIUM = 2;
     static final int BOLD = 3;
+    /** Свой шрифт пользователя ({@link UserFonts}), имя файла — в SceneConfig. */
+    static final int USER = 4;
     private static final String KZB = "/apps/cluster/*/bin/hmi/*/ClusterHMI/resource.kzb";
     private static final long FETCH_TIMEOUT_MS = 120000;
 

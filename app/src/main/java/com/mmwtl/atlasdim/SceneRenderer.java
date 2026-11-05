@@ -87,8 +87,11 @@ final class SceneRenderer {
             canvas.drawRoundRect(0, 0, layer.w, layer.h, radius, radius, paint);
         }
         paint.setColor(Color.WHITE);
-        Typeface cluster = ClusterFont.typeface(layer.kind == SceneConfig.Kind.FUEL
-                ? config.fuelFont : config.clockFont);
+        boolean isFuel = layer.kind == SceneConfig.Kind.FUEL;
+        int font = isFuel ? config.fuelFont : config.clockFont;
+        Typeface cluster = font == ClusterFont.USER
+                ? UserFonts.typeface(isFuel ? config.fuelFontFile : config.clockFontFile)
+                : ClusterFont.typeface(font);
         paint.setTypeface(cluster != null ? cluster
                 : Typeface.create("sans-serif-medium", Typeface.NORMAL));
         String[] parts = text.split(String.valueOf(PARTS));

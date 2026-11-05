@@ -61,6 +61,8 @@ public final class MainActivity extends ScaledActivity {
             | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED;
     private static final int PICK_IMAGE = 1;
     private static final int READ_IMAGES = 2;
+    private static final int PICK_FONT = 3;
+    private static final int READ_FONTS = 4;
     private static final int[] SWATCHES = {0xff10243a, 0xff000000, 0xff1b1f27, 0xff0f2a2a,
             0xff2a1838, 0xff3a1414, 0xff1a2f14, 0xff2b2b2b};
     private static final SceneConfig.Kind[] KINDS = {SceneConfig.Kind.CLOCK,
@@ -123,6 +125,7 @@ public final class MainActivity extends ScaledActivity {
         super.onCreate(savedInstanceState);
         Backgrounds.init(this);
         ClusterFont.init(this);
+        UserFonts.init(this);
         SharedPreferences prefs = prefs();
         fill = prefs.getString("fill", Backgrounds.ASSET + "c02-neon-horizon.webp");
 
@@ -254,7 +257,8 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout look = card(page, R.string.clock_look_title);
         seconds = toggle(look, R.string.clock_seconds, prefs.getBoolean("seconds", false));
         plate = toggle(look, R.string.digits_plate, prefs.getBoolean("plate", false));
-        clockFont = new FontPicker(look, prefs.getInt("clockFont", ClusterFont.SYSTEM));
+        clockFont = new FontPicker(look, prefs.getInt("clockFont", ClusterFont.SYSTEM),
+                prefs.getString("clockFontFile", ""));
     }
 
     private void buildFuelTab(LinearLayout page) {
@@ -266,7 +270,8 @@ public final class MainActivity extends ScaledActivity {
         fuelStacked = toggle(shown, R.string.fuel_stacked, prefs.getBoolean("fuel.stacked", false));
         fuelUnits = toggle(shown, R.string.fuel_units, prefs.getBoolean("fuel.units", true));
         fuelPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("fuel.plate", false));
-        fuelFont = new FontPicker(shown, prefs.getInt("fuel.font", ClusterFont.SYSTEM));
+        fuelFont = new FontPicker(shown, prefs.getInt("fuel.font", ClusterFont.SYSTEM),
+                prefs.getString("fuel.fontFile", ""));
         LinearLayout digitsRow = new LinearLayout(this);
         fuelDigits = formulaCell(digitsRow, R.string.fuel_digits,
                 prefs.getString("fuel.digits", "0"), NUMBER);
@@ -669,6 +674,7 @@ public final class MainActivity extends ScaledActivity {
         config.fuelFree = fuelFree.isChecked();
         config.fuelPlate = fuelPlate.isChecked();
         config.fuelFont = fuelFont.font;
+        config.fuelFontFile = fuelFont.file;
         config.fuelLabelLiters = fuelLabelLiters.getText().toString().trim();
         config.fuelLabelFree = fuelLabelFree.getText().toString().trim();
         config.fuelUnits = fuelUnits.isChecked();
@@ -683,6 +689,7 @@ public final class MainActivity extends ScaledActivity {
         config.seconds = seconds.isChecked();
         config.plate = plate.isChecked();
         config.clockFont = clockFont.font;
+        config.clockFontFile = clockFont.file;
         config.grid = grid.isChecked();
         config.fill = fill;
         config.alpha = alpha.getProgress();
@@ -807,6 +814,7 @@ public final class MainActivity extends ScaledActivity {
                 .putBoolean("fuel.free", fuelFree.isChecked())
                 .putBoolean("fuel.plate", fuelPlate.isChecked())
                 .putInt("fuel.font", fuelFont.font)
+                .putString("fuel.fontFile", fuelFont.file)
                 .putString("fuel.labelLiters", fuelLabelLiters.getText().toString())
                 .putString("fuel.labelFree", fuelLabelFree.getText().toString())
                 .putBoolean("fuel.units", fuelUnits.isChecked())
@@ -818,6 +826,7 @@ public final class MainActivity extends ScaledActivity {
                 .putString("fuel.offset", fuelOffset.getText().toString());
         edit.putBoolean("seconds", seconds.isChecked()).putBoolean("plate", plate.isChecked())
                 .putInt("clockFont", clockFont.font)
+                .putString("clockFontFile", clockFont.file)
                 .putBoolean("grid", grid.isChecked()).putString("color", color.getText().toString())
                 .putString("alpha", String.valueOf(alpha.getProgress())).putString("fill", fill).apply();
     }
@@ -931,6 +940,11 @@ public final class MainActivity extends ScaledActivity {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        if (code == READ_FONTS && fontTarget != null) {
+            // Без разрешения «Загрузки» не видны, но импортированные и выбор файлов остаются.
+            showFonts(fontTarget);
+            return;
+        }
         if (code != READ_IMAGES) {
             return;
         }
@@ -959,6 +973,11 @@ public final class MainActivity extends ScaledActivity {
         if (code == PICK_IMAGE && result == RESULT_OK && data != null && data.getData() != null) {
             importImage(data.getData());
         }
+        if (code == PICK_FONT && result == RESULT_OK && data != null && data.getData() != null
+                && fontTarget != null) {
+            Uri uri = data.getData();
+            importFont(fontTarget, () -> UserFonts.importUri(this, uri));
+        }
     }
 
     private void importImage(Uri uri) {
@@ -982,22 +1001,116 @@ public final class MainActivity extends ScaledActivity {
 
     // ---- Шрифт цифр ----
 
-    /** Системный или одно из начертаний GeelyBCTF штатной приборки; под выбором — загружен ли он. */
+    /** Пикер, для которого открыт выбор своего шрифта (результат приходит в Activity). */
+    private FontPicker fontTarget;
+
+    private interface FontImport {
+        String run() throws IOException;
+    }
+
+    private void openFonts(FontPicker picker) {
+        fontTarget = picker;
+        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_FONTS);
+            return;
+        }
+        showFonts(picker);
+    }
+
+    private void showFonts(FontPicker picker) {
+        sized(UserFonts.show(this, picker.file, picker::choose,
+                found -> importFont(picker, () -> UserFonts.importFile(found)),
+                name -> sized(new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                        .setMessage(getString(R.string.font_user_delete, name))
+                        .setPositiveButton(R.string.background_delete_confirm, (d, w) -> {
+                            if (!UserFonts.delete(name)) {
+                                status.setText(getString(R.string.background_delete_failed, name));
+                            }
+                            clockFont.paint();
+                            fuelFont.paint();
+                            refreshPreview();
+                        })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()),
+                this::allowDownloads, this::openFontPicker));
+    }
+
+    /** Экран «Доступ ко всем файлам» для AtlasDim; без него — общий список приложений. */
+    private void allowDownloads() {
+        Intent app = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Uri.parse("package:" + getPackageName()));
+        Intent all = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+        for (Intent intent : new Intent[] {app, all}) {
+            try {
+                startActivity(intent);
+                status.setText(R.string.font_user_allow_back);
+                return;
+            } catch (ActivityNotFoundException e) {
+                // Следующий вариант.
+            }
+        }
+        status.setText(getString(R.string.font_user_allow_adb, getPackageName()));
+    }
+
+    private void openFontPicker() {
+        // MIME у шрифтов разный (font/ttf, application/x-font-ttf, octet-stream) — берём любой файл.
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT).setType("*/*")
+                .addCategory(Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(Intent.createChooser(intent,
+                    getString(R.string.font_user_title)), PICK_FONT);
+        } catch (ActivityNotFoundException e) {
+            status.setText(getString(R.string.font_user_no_picker, getExternalFilesDir("fonts")));
+        }
+    }
+
+    private void importFont(FontPicker picker, FontImport task) {
+        status.setText(R.string.font_user_loading);
+        new Thread(() -> {
+            try {
+                String name = task.run();
+                runOnUiThread(() -> {
+                    picker.choose(name);
+                    // Тот же файл мог быть выбран и во втором пикере: перерисовать оба.
+                    clockFont.paint();
+                    fuelFont.paint();
+                    status.setText(R.string.font_user_added);
+                });
+            } catch (Exception e) {
+                Log.w("AtlasDim", "import font", e);
+                runOnUiThread(() -> status.setText(getString(R.string.font_user_failed,
+                        e.getMessage())));
+            }
+        }, "atlasdim-font").start();
+    }
+
+    /**
+     * Системный, одно из начертаний GeelyBCTF штатной приборки или свой файл;
+     * под выбором — загружен ли он.
+     */
     private final class FontPicker {
         private final int[] names = {R.string.font_system, R.string.font_regular,
-                R.string.font_medium, R.string.font_bold};
+                R.string.font_medium, R.string.font_bold, R.string.font_user};
         private final TextView[] segments = new TextView[names.length];
         private final TextView hint;
         int font;
+        String file;
 
-        FontPicker(LinearLayout parent, int initial) {
+        FontPicker(LinearLayout parent, int initial, String initialFile) {
             font = initial >= 0 && initial < names.length ? initial : ClusterFont.SYSTEM;
+            file = initialFile == null ? "" : initialFile;
             parent.addView(label(R.string.font_title));
             LinearLayout row = new LinearLayout(MainActivity.this);
             for (int i = 0; i < names.length; i++) {
                 int value = i;
                 segments[i] = Ui.segment(MainActivity.this, names[i]);
                 segments[i].setOnClickListener(v -> {
+                    if (value == ClusterFont.USER) {
+                        // Повторное нажатие тоже открывает список: так меняют файл.
+                        openFonts(this);
+                        return;
+                    }
                     font = value;
                     paint();
                     refreshPreview();
@@ -1010,12 +1123,24 @@ public final class MainActivity extends ScaledActivity {
             paint();
         }
 
+        void choose(String name) {
+            font = ClusterFont.USER;
+            file = name;
+            paint();
+            refreshPreview();
+        }
+
         void paint() {
             for (int i = 0; i < segments.length; i++) {
                 Ui.setSegmentSelected(MainActivity.this, segments[i], i == font);
             }
-            hint.setText(font == ClusterFont.SYSTEM ? R.string.font_system_hint
-                    : ClusterFont.saved(font) ? R.string.font_saved_hint : R.string.font_missing_hint);
+            if (font == ClusterFont.USER) {
+                hint.setText(UserFonts.exists(file) ? getString(R.string.font_user_hint, file)
+                        : getString(R.string.font_user_missing_hint));
+            } else {
+                hint.setText(font == ClusterFont.SYSTEM ? R.string.font_system_hint
+                        : ClusterFont.saved(font) ? R.string.font_saved_hint : R.string.font_missing_hint);
+            }
         }
     }
 

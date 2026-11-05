@@ -58,6 +58,21 @@
     <string name="font_bold">Жирный</string>
     <string name="font_system_hint">Системный шрифт Android.</string>
     <string name="font_saved_hint">GeelyBCTF штатной приборки, шрифт уже в приложении. Русские буквы — системным шрифтом.</string>
+    <string name="font_user">Свой</string>
+    <string name="font_user_title">Свой шрифт</string>
+    <string name="font_user_empty">Шрифтов не найдено</string>
+    <string name="font_user_found">＋ %1$s · %2$d КБ, из «Загрузок»</string>
+    <string name="font_user_files">Открыть файлы…</string>
+    <string name="font_user_allow">Разрешить доступ к «Загрузкам»…</string>
+    <string name="font_user_allow_back">Включите «Доступ ко всем файлам» для AtlasDim, вернитесь и снова нажмите «Свой»</string>
+    <string name="font_user_allow_adb">Экрана доступа к файлам нет. По adb: appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
+    <string name="font_user_hint">Свой шрифт %1$s. Символы, которых в нём нет, — системным шрифтом. Удалить — долгое нажатие в списке.</string>
+    <string name="font_user_missing_hint">Свой шрифт не выбран — рисуется системным. Положите TTF или OTF в «Загрузки» и нажмите «Свой».</string>
+    <string name="font_user_delete">Удалить шрифт %1$s из приложения?</string>
+    <string name="font_user_no_picker">Нет приложения для выбора файлов. Положите шрифт в «Загрузки» или в %1$s</string>
+    <string name="font_user_loading">Загружаю шрифт…</string>
+    <string name="font_user_added">Шрифт добавлен · нажмите «Показать / применить»</string>
+    <string name="font_user_failed">Шрифт не загружен: %1$s</string>
     <string name="font_missing_hint">GeelyBCTF штатной приборки. Ещё не загружен: заберётся с QNX один раз при «Показать / применить», до этого — системный.</string>
 
     <string name="fuel_shown_title">Что показывать</string>

@@ -52,6 +52,7 @@ final class SceneSession {
         this.context = context.getApplicationContext();
         Backgrounds.init(context);
         ClusterFont.init(context);
+        UserFonts.init(context);
         this.config = new SceneConfig(config);
         this.listener = listener;
     }
