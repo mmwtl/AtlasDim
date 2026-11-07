@@ -66,12 +66,12 @@ public final class MainActivity extends ScaledActivity {
     private static final int[] SWATCHES = {0xff10243a, 0xff000000, 0xff1b1f27, 0xff0f2a2a,
             0xff2a1838, 0xff3a1414, 0xff1a2f14, 0xff2b2b2b};
     private static final SceneConfig.Kind[] KINDS = {SceneConfig.Kind.CLOCK,
-            SceneConfig.Kind.FUEL, SceneConfig.Kind.BACKGROUND};
-    private static final int TAB_SYSTEM = 3;
+            SceneConfig.Kind.FUEL, SceneConfig.Kind.TEMP, SceneConfig.Kind.BACKGROUND};
+    private static final int TAB_SYSTEM = 4;
     private static final int KEEP_REPORTS = 20;
     private static final String KEY_UNRESTRICTED = "unrestricted";
     private static final int[] TAB_LABELS = {R.string.tab_clock, R.string.tab_fuel,
-            R.string.tab_background, R.string.tab_system};
+            R.string.tab_temp, R.string.tab_background, R.string.tab_system};
     private boolean ready;
     private boolean syncing;
     private boolean dirty;
@@ -92,6 +92,7 @@ public final class MainActivity extends ScaledActivity {
     private TextView diagStatus;
     private LayerEditor clock;
     private LayerEditor fuel;
+    private LayerEditor temp;
     private LayerEditor background;
     private final List<TextView> tabs = new ArrayList<>();
     private final List<View> panels = new ArrayList<>();
@@ -118,7 +119,12 @@ public final class MainActivity extends ScaledActivity {
     private EditText fuelGapV;
     private EditText fuelMultiplier;
     private EditText fuelOffset;
-    private FuelSensor fuelSensor;
+    private Switch tempCabin;
+    private Switch tempOutside;
+    private Switch tempIcons;
+    private Switch tempPlate;
+    private FontPicker tempFont;
+    private GibSensors sensors;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,6 +148,7 @@ public final class MainActivity extends ScaledActivity {
 
         buildClockTab(page(content));
         buildFuelTab(page(content));
+        buildTempTab(page(content));
         buildBackgroundTab(page(content));
         buildSystemTab(page(content));
         root.addView(buildActions());
@@ -165,14 +172,14 @@ public final class MainActivity extends ScaledActivity {
         // Пользователь мог только что вернуться из спецвозможностей.
         autostart.setText(AutostartService.enabled(this) ? R.string.autostart_on
                 : R.string.autostart_hint);
-        fuelSensor = new FuelSensor(this);
-        fuelSensor.start();
+        sensors = new GibSensors(this);
+        sensors.start();
     }
 
     @Override
     protected void onStop() {
         SceneService.setListener(null);
-        fuelSensor.stop();
+        sensors.stop();
         super.onStop();
     }
 
@@ -319,6 +326,19 @@ public final class MainActivity extends ScaledActivity {
                 prefs.getString("fuel.offset", Fuel.format(Fuel.OFFSET)), DECIMAL);
         formula.addView(cells, margin(10));
         formula.addView(hint(R.string.fuel_formula_hint));
+    }
+
+    private void buildTempTab(LinearLayout page) {
+        SharedPreferences prefs = prefs();
+        temp = new LayerEditor(page, previewConfig.temp);
+        LinearLayout shown = card(page, R.string.fuel_shown_title);
+        tempCabin = toggle(shown, R.string.temp_cabin, prefs.getBoolean("temp.cabin", true));
+        tempOutside = toggle(shown, R.string.temp_outside, prefs.getBoolean("temp.outside", false));
+        tempIcons = toggle(shown, R.string.temp_icons, prefs.getBoolean("temp.icons", true));
+        tempPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("temp.plate", false));
+        tempFont = new FontPicker(shown, prefs.getInt("temp.font", ClusterFont.SYSTEM),
+                prefs.getString("temp.fontFile", ""));
+        shown.addView(hint(R.string.temp_hint));
     }
 
     private void buildBackgroundTab(LinearLayout page) {
@@ -626,7 +646,8 @@ public final class MainActivity extends ScaledActivity {
     // ---- Состояние ----
 
     private LayerEditor editor(SceneConfig.Kind kind) {
-        return kind == SceneConfig.Kind.CLOCK ? clock : kind == SceneConfig.Kind.FUEL ? fuel : background;
+        return kind == SceneConfig.Kind.CLOCK ? clock : kind == SceneConfig.Kind.FUEL ? fuel
+                : kind == SceneConfig.Kind.TEMP ? temp : background;
     }
 
     private void showTab(int index) {
@@ -669,6 +690,13 @@ public final class MainActivity extends ScaledActivity {
         config.password = typed.isEmpty() ? BuildConfig.QNX_PASSWORD : typed;
         clock.read(config.clock);
         fuel.read(config.fuel);
+        temp.read(config.temp);
+        config.tempCabin = tempCabin.isChecked();
+        config.tempOutside = tempOutside.isChecked();
+        config.tempIcons = tempIcons.isChecked();
+        config.tempPlate = tempPlate.isChecked();
+        config.tempFont = tempFont.font;
+        config.tempFontFile = tempFont.file;
         background.read(config.background);
         config.fuelLiters = fuelLiters.isChecked();
         config.fuelFree = fuelFree.isChecked();
@@ -715,7 +743,8 @@ public final class MainActivity extends ScaledActivity {
             previewConfig = readConfig();
             saveConfig(); // Корректный черновик (позиция после перетаскивания) не теряется.
             previewStatus.setText(getString(R.string.preview_hint, summary(previewConfig.clock),
-                    summary(previewConfig.fuel), summary(previewConfig.background)));
+                    summary(previewConfig.fuel), summary(previewConfig.temp),
+                    summary(previewConfig.background)));
             previewStatus.setTextColor(Ui.TEXT_SECONDARY);
         } catch (IllegalArgumentException e) {
             valid = false;
@@ -725,6 +754,7 @@ public final class MainActivity extends ScaledActivity {
         preview.update(previewConfig, valid);
         clockFont.paint();
         fuelFont.paint();
+        tempFont.paint();
         if (SceneService.isActive(this) && !dirty) {
             dirty = true;
             setPill(getString(R.string.pill_dirty), PENDING);
@@ -776,6 +806,7 @@ public final class MainActivity extends ScaledActivity {
         // Шрифт приборки мог только что загрузиться с QNX.
         clockFont.paint();
         fuelFont.paint();
+        tempFont.paint();
         boolean failed = state.startsWith("Ошибка") || state.contains("потеряна");
         status.setTextColor(failed ? Ui.ERROR : Ui.TEXT_SECONDARY);
         if (dirty) {
@@ -809,6 +840,13 @@ public final class MainActivity extends ScaledActivity {
         edit.putBoolean(KEY_UNRESTRICTED, unrestricted.isChecked());
         clock.save(edit);
         fuel.save(edit);
+        temp.save(edit);
+        edit.putBoolean("temp.cabin", tempCabin.isChecked())
+                .putBoolean("temp.outside", tempOutside.isChecked())
+                .putBoolean("temp.icons", tempIcons.isChecked())
+                .putBoolean("temp.plate", tempPlate.isChecked())
+                .putInt("temp.font", tempFont.font)
+                .putString("temp.fontFile", tempFont.file);
         background.save(edit);
         edit.putBoolean("fuel.liters", fuelLiters.isChecked())
                 .putBoolean("fuel.free", fuelFree.isChecked())
@@ -1029,6 +1067,7 @@ public final class MainActivity extends ScaledActivity {
                             }
                             clockFont.paint();
                             fuelFont.paint();
+                            tempFont.paint();
                             refreshPreview();
                         })
                         .setNegativeButton(R.string.cancel, null)
@@ -1072,9 +1111,10 @@ public final class MainActivity extends ScaledActivity {
                 String name = task.run();
                 runOnUiThread(() -> {
                     picker.choose(name);
-                    // Тот же файл мог быть выбран и во втором пикере: перерисовать оба.
+                    // Тот же файл мог быть выбран и в другом пикере: перерисовать все.
                     clockFont.paint();
                     fuelFont.paint();
+                    tempFont.paint();
                     status.setText(R.string.font_user_added);
                 });
             } catch (Exception e) {

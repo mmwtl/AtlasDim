@@ -88,7 +88,8 @@ final class ClusterFont {
     /** Композиции нужно начертание, которого ещё нет, — без telnet не обойтись. */
     static boolean missing(SceneConfig config) {
         return config.clock.enabled && !saved(config.clockFont)
-                || config.fuel.enabled && !saved(config.fuelFont);
+                || config.fuel.enabled && !saved(config.fuelFont)
+                || config.temp.enabled && !saved(config.tempFont);
     }
 
     /** Забирает с QNX недостающие начертания композиции. */
@@ -98,6 +99,9 @@ final class ClusterFont {
         }
         if (config.fuel.enabled) {
             fetch(qnx, config.fuelFont);
+        }
+        if (config.temp.enabled) {
+            fetch(qnx, config.tempFont);
         }
     }
 

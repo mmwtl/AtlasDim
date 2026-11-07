@@ -213,7 +213,7 @@ final class DimDaemon {
     /** Файл другой роли для того же дисплея и текущей версии демона, если есть. */
     private static String sibling(QnxShell qnx, SceneConfig.Layer layer, int size)
             throws IOException {
-        for (String role : new String[] {"background", "clock", "fuel"}) {
+        for (String role : new String[] {"background", "clock", "fuel", "temp"}) {
             String path = "/tmp/" + NAME + "-" + role + layer.display;
             if (!role.equals(layer.id()) && sizeOf(qnx, path) == size) {
                 return path;

@@ -16,6 +16,7 @@ final class ScenePreview extends View {
     static final int CLOCK_COLOR = 0xfff5b84a;
     static final int BACKGROUND_COLOR = 0xff38bdf8;
     static final int FUEL_COLOR = 0xffa78bfa;
+    static final int TEMP_COLOR = 0xff4ade80;
     private static final int SNAP = 4;
     private static final int EDGE = 16;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -52,7 +53,8 @@ final class ScenePreview extends View {
 
     static int color(SceneConfig.Kind kind) {
         return kind == SceneConfig.Kind.CLOCK ? CLOCK_COLOR
-                : kind == SceneConfig.Kind.FUEL ? FUEL_COLOR : BACKGROUND_COLOR;
+                : kind == SceneConfig.Kind.FUEL ? FUEL_COLOR
+                : kind == SceneConfig.Kind.TEMP ? TEMP_COLOR : BACKGROUND_COLOR;
     }
 
     void update(SceneConfig config, boolean valid) {

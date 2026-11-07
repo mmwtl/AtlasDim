@@ -23,6 +23,7 @@ final class SceneConfig {
     String password = BuildConfig.QNX_PASSWORD;
     final Layer clock = new Layer(Kind.CLOCK);
     final Layer fuel = new Layer(Kind.FUEL);
+    final Layer temp = new Layer(Kind.TEMP);
     final Layer background = new Layer(Kind.BACKGROUND);
     /** Без проверок под модель (лампы, слои приборки): только для экспериментов. */
     boolean unrestricted;
@@ -60,8 +61,15 @@ final class SceneConfig {
     static final String FUEL_LABEL_LITERS = "залито";
     static final String FUEL_LABEL_FREE = "своб.";
     static final int FUEL_LABEL_MAX = 20;
+    /** Температура: в салоне, за бортом, иконки салона и улицы, подложка, шрифт. */
+    boolean tempCabin = true;
+    boolean tempOutside;
+    boolean tempIcons = true;
+    boolean tempPlate;
+    int tempFont = ClusterFont.SYSTEM;
+    String tempFontFile = "";
 
-    enum Kind { CLOCK, FUEL, BACKGROUND }
+    enum Kind { CLOCK, FUEL, TEMP, BACKGROUND }
 
     static final class Layer {
         final Kind kind;
@@ -82,26 +90,30 @@ final class SceneConfig {
             enabled = kind == Kind.CLOCK;
             display = background || SINGLE_LAYER ? 2 : 1;
             int top = SINGLE_LAYER ? CLUSTER_Z + 3 : LAMPS_Z;
-            // Часы на G636 — z=7, под топливом (8).
+            // Часы на G636 — z=7, под топливом (8); температура — 6 на обеих моделях.
             int clockZ = SINGLE_LAYER ? top - 1 : top - 3;
-            z = background ? 0 : kind == Kind.CLOCK ? clockZ : top - 2;
-            x = kind == Kind.FUEL ? WIDTH - 300 : 0;
+            int tempZ = SINGLE_LAYER ? top : top - 4;
+            z = background ? 0 : kind == Kind.CLOCK ? clockZ : kind == Kind.TEMP ? tempZ : top - 2;
+            x = kind == Kind.FUEL ? WIDTH - 300 : kind == Kind.TEMP ? 120 : 0;
             y = background ? 0 : 482;
-            w = background ? WIDTH : kind == Kind.CLOCK ? 100 : 300;
+            w = background ? WIDTH : kind == Kind.CLOCK ? 100 : kind == Kind.TEMP ? 200 : 300;
             h = background ? HEIGHT : 50;
         }
 
         // 4921x занят ANHUD (его демон слушает 49210) — берём 5021x.
         int port() {
-            return background ? 50211 : kind == Kind.CLOCK ? 50210 : 50212;
+            return background ? 50211 : kind == Kind.CLOCK ? 50210
+                    : kind == Kind.TEMP ? 50213 : 50212;
         }
 
         String id() {
-            return background ? "background" : kind == Kind.CLOCK ? "clock" : "fuel";
+            return background ? "background" : kind == Kind.CLOCK ? "clock"
+                    : kind == Kind.TEMP ? "temp" : "fuel";
         }
 
         String label() {
-            return background ? "Фон" : kind == Kind.CLOCK ? "Часы" : "Топливо";
+            return background ? "Фон" : kind == Kind.CLOCK ? "Часы"
+                    : kind == Kind.TEMP ? "Температура" : "Топливо";
         }
 
         void copyFrom(Layer other) {
@@ -197,20 +209,27 @@ final class SceneConfig {
         fuelStacked = other.fuelStacked;
         fuelGapH = other.fuelGapH;
         fuelGapV = other.fuelGapV;
+        tempCabin = other.tempCabin;
+        tempOutside = other.tempOutside;
+        tempIcons = other.tempIcons;
+        tempPlate = other.tempPlate;
+        tempFont = other.tempFont;
+        tempFontFile = other.tempFontFile;
         unrestricted = other.unrestricted;
     }
 
     Layer layer(Kind kind) {
-        return kind == Kind.CLOCK ? clock : kind == Kind.FUEL ? fuel : background;
+        return kind == Kind.CLOCK ? clock : kind == Kind.FUEL ? fuel
+                : kind == Kind.TEMP ? temp : background;
     }
 
     /** Снизу вверх по порядку запуска: фон первым, затем окна поверх него. */
     Layer[] layers() {
-        return new Layer[] {background, clock, fuel};
+        return new Layer[] {background, clock, fuel, temp};
     }
 
     boolean anyEnabled() {
-        return clock.enabled || fuel.enabled || background.enabled;
+        return clock.enabled || fuel.enabled || temp.enabled || background.enabled;
     }
 
     void validate() {
@@ -233,6 +252,9 @@ final class SceneConfig {
         }
         if (fuel.enabled && !fuelLiters && !fuelFree) {
             throw new IllegalArgumentException("Топливо: выберите залитые или свободные литры");
+        }
+        if (temp.enabled && !tempCabin && !tempOutside) {
+            throw new IllegalArgumentException("Температура: выберите салон или улицу");
         }
         if (fuel.enabled && !Fuel.isValid(fuelMultiplier, fuelOffset)) {
             throw new IllegalArgumentException("Топливо: множитель до ±100, смещение до ±1000");
@@ -264,7 +286,10 @@ final class SceneConfig {
                     .put("fuelLabelFree", fuelLabelFree).put("fuelUnits", fuelUnits)
                     .put("fuelDigits", fuelDigits)
                     .put("fuelStacked", fuelStacked).put("fuelGapH", fuelGapH)
-                    .put("fuelGapV", fuelGapV).put("unrestricted", unrestricted);
+                    .put("fuelGapV", fuelGapV).put("tempCabin", tempCabin)
+                    .put("tempOutside", tempOutside).put("tempIcons", tempIcons)
+                    .put("tempPlate", tempPlate).put("tempFont", tempFont)
+                    .put("tempFontFile", tempFontFile).put("unrestricted", unrestricted);
             for (Layer layer : layers()) {
                 json.put(layer.id(), layer.toJson());
             }
@@ -313,6 +338,12 @@ final class SceneConfig {
         config.fuelStacked = json.optBoolean("fuelStacked", config.fuelStacked);
         config.fuelGapH = json.optInt("fuelGapH", config.fuelGapH);
         config.fuelGapV = json.optInt("fuelGapV", config.fuelGapV);
+        config.tempCabin = json.optBoolean("tempCabin", config.tempCabin);
+        config.tempOutside = json.optBoolean("tempOutside", config.tempOutside);
+        config.tempIcons = json.optBoolean("tempIcons", config.tempIcons);
+        config.tempPlate = json.optBoolean("tempPlate", config.tempPlate);
+        config.tempFont = json.optInt("tempFont", config.tempFont);
+        config.tempFontFile = json.optString("tempFontFile", config.tempFontFile);
         config.unrestricted = json.optBoolean("unrestricted", config.unrestricted);
         for (Layer layer : config.layers()) {
             JSONObject item = json.optJSONObject(layer.id());
@@ -329,6 +360,7 @@ final class SceneConfig {
         }
         allowPlacement(config.clock);
         allowPlacement(config.fuel);
+        allowPlacement(config.temp);
         return config;
     }
 }

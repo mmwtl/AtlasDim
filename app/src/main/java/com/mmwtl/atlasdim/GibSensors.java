@@ -11,14 +11,17 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * Датчик топлива через GInputBridge (ГИБ, {@code com.salat.gbinder}). Контракт и подписка —
- * по образцу AtlasClimateWidget ({@code Gib.java}, {@code ClimateService}): запросы — явные
- * broadcast в пакет моста, ответы и изменения — неявные broadcast с extras id/value, их
- * получает только динамически зарегистрированный приёмник. Значение общее на процесс:
- * его читают и кадры для QNX, и предпросмотр.
+ * Датчики GInputBridge (ГИБ, {@code com.salat.gbinder}): топливо и температуры в салоне и
+ * за бортом. Контракт и подписка — по образцу AtlasClimateWidget ({@code Gib.java},
+ * {@code ClimateService}, id из {@code Hvac.java}): запросы — явные broadcast в пакет
+ * моста по одному id, ответы и изменения — неявные broadcast с extras id/value, их
+ * получает только динамически зарегистрированный приёмник. Значения общие на процесс:
+ * их читают и кадры для QNX, и предпросмотр.
  */
-final class FuelSensor {
+final class GibSensors {
     private static final String TAG = "AtlasDim";
     static final String PACKAGE = "com.salat.gbinder";
     static final String GET_FLOAT_SENSOR = PACKAGE + ".GET_FLOAT_SENSOR";
@@ -29,13 +32,19 @@ final class FuelSensor {
     static final String EXTRA_VALUE = "value";
     /** Fuel Percentage, 0–100 (AtlasClimateWidget {@code Hvac.SENSOR_FUEL_PERCENTAGE}). */
     static final int SENSOR_FUEL_PERCENTAGE = 4211968;
+    /** Температура за бортом, °C ({@code Hvac.SENSOR_TEMPERATURE_AMBIENT}). */
+    static final int SENSOR_TEMPERATURE_AMBIENT = 1051392;
+    /** Температура в салоне, °C ({@code Hvac.SENSOR_TEMPERATURE_INDOOR}). */
+    static final int SENSOR_TEMPERATURE_INDOOR = 1051648;
+    private static final int[] SENSORS = {SENSOR_FUEL_PERCENTAGE, SENSOR_TEMPERATURE_INDOOR,
+            SENSOR_TEMPERATURE_AMBIENT};
     /** Повтор подписки и запроса: мост мог стартовать позже нас (после загрузки ГУ). */
     private static final long POLL_MS = 30_000;
     /** Без ответа дольше — показание считается устаревшим. */
     private static final long STALE_MS = 5 * 60_000;
 
-    private static volatile Double value;
-    private static volatile long at;
+    /** id датчика → {значение, elapsedRealtime ответа}. */
+    private static final ConcurrentHashMap<Integer, double[]> READINGS = new ConcurrentHashMap<>();
 
     private final Context context;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -56,14 +65,15 @@ final class FuelSensor {
         }
     };
 
-    FuelSensor(Context context) {
+    GibSensors(Context context) {
         this.context = context.getApplicationContext();
     }
 
-    /** Последнее свежее показание 0–100 или null. */
-    static Double value() {
-        Double current = value;
-        return current != null && SystemClock.elapsedRealtime() - at <= STALE_MS ? current : null;
+    /** Последнее свежее показание датчика или null. */
+    static Double value(int id) {
+        double[] reading = READINGS.get(id);
+        return reading != null && SystemClock.elapsedRealtime() - (long) reading[1] <= STALE_MS
+                ? reading[0] : null;
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag") // targetSdk 30: флаг экспорта не нужен.
@@ -78,7 +88,7 @@ final class FuelSensor {
             context.registerReceiver(receiver, filter);
             registered = true;
         } catch (RuntimeException e) {
-            Log.w(TAG, "fuel: приёмник ГИБ не зарегистрирован", e);
+            Log.w(TAG, "gib: приёмник ГИБ не зарегистрирован", e);
             return;
         }
         poll.run();
@@ -96,16 +106,17 @@ final class FuelSensor {
     }
 
     private void request() {
-        send(new Intent(LISTEN_SENSOR_CHANGES));
-        send(new Intent(GET_FLOAT_SENSOR));
+        for (int id : SENSORS) {
+            send(new Intent(LISTEN_SENSOR_CHANGES), id);
+            send(new Intent(GET_FLOAT_SENSOR), id);
+        }
     }
 
-    private void send(Intent intent) {
+    private void send(Intent intent, int id) {
         try {
-            context.sendBroadcast(intent.setPackage(PACKAGE)
-                    .putExtra(EXTRA_ID, SENSOR_FUEL_PERCENTAGE));
+            context.sendBroadcast(intent.setPackage(PACKAGE).putExtra(EXTRA_ID, id));
         } catch (RuntimeException e) {
-            Log.w(TAG, "fuel: не отправлен " + intent.getAction(), e);
+            Log.w(TAG, "gib: не отправлен " + intent.getAction(), e);
         }
     }
 
@@ -116,11 +127,19 @@ final class FuelSensor {
         }
         Double id = number(extra(intent, EXTRA_ID));
         Double reading = number(extra(intent, EXTRA_VALUE));
-        if (id == null || id != SENSOR_FUEL_PERCENTAGE || reading == null) {
+        if (id == null || reading == null || !known(id)) {
             return;
         }
-        value = reading;
-        at = SystemClock.elapsedRealtime();
+        READINGS.put((int) (double) id, new double[] {reading, SystemClock.elapsedRealtime()});
+    }
+
+    private static boolean known(double id) {
+        for (int sensor : SENSORS) {
+            if (id == sensor) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Мост шлёт extras строками, старые сборки — числами. */

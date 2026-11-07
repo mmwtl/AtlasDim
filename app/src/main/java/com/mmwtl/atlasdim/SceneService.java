@@ -41,7 +41,7 @@ public final class SceneService extends Service {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable retry = this::applySaved;
     private SceneSession session;
-    private FuelSensor fuel;
+    private GibSensors sensors;
     private int failures;
     /** Сессии, ещё не завершившие очистку (в том числе заменённые). */
     private int running;
@@ -110,7 +110,7 @@ public final class SceneService extends Service {
     public void onDestroy() {
         instance = null;
         main.removeCallbacks(retry);
-        stopFuel();
+        stopSensors();
         if (session != null) {
             session.stop();
             session = null;
@@ -140,13 +140,13 @@ public final class SceneService extends Service {
             halt();
             return;
         }
-        if (config.fuel.enabled) {
-            if (fuel == null) {
-                fuel = new FuelSensor(this);
-                fuel.start();
+        if (config.fuel.enabled || config.temp.enabled) {
+            if (sensors == null) {
+                sensors = new GibSensors(this);
+                sensors.start();
             }
         } else {
-            stopFuel();
+            stopSensors();
         }
         if (session != null) {
             // Только рисунок — кадр уходит в открытые окна, демоны не трогаем.
@@ -213,7 +213,7 @@ public final class SceneService extends Service {
     /** Окна закрыть, демоны остановить; сервис завершится, когда закончится очистка. */
     private void halt() {
         main.removeCallbacks(retry);
-        stopFuel();
+        stopSensors();
         if (session != null) {
             session.stop(true);
             session = null;
@@ -223,10 +223,10 @@ public final class SceneService extends Service {
         }
     }
 
-    private void stopFuel() {
-        if (fuel != null) {
-            fuel.stop();
-            fuel = null;
+    private void stopSensors() {
+        if (sensors != null) {
+            sensors.stop();
+            sensors = null;
         }
     }
 
