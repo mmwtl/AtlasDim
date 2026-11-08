@@ -78,7 +78,7 @@
 
     <string name="temp_cabin">В салоне</string>
     <string name="temp_outside">За бортом</string>
-    <string name="temp_icons">Иконки: машина — салон, ёлка — улица</string>
+    <string name="temp_icons">Иконки: сиденье — салон, облако — улица</string>
     <string name="temp_hint">Датчики температуры из GInputBridge, как в Atlas Climate Widget, целыми градусами. Штатная приборка уже показывает температуру за бортом — включите её здесь, если хотите видеть обе рядом. Без GInputBridge или до первого ответа — «—».</string>
     <string name="fuel_shown_title">Что показывать</string>
     <string name="fuel_liters">Залито, л</string>

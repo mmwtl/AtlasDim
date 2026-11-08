@@ -139,22 +139,22 @@ final class SceneRenderer {
         }
     }
 
-    /** Иконки к частям {@link #temperature}: салон — машина, улица — ёлка. */
+    /** Иконки к частям {@link #temperature}: салон — сиденье, улица — облако с солнцем (MDI). */
     private static Path[] icons(SceneConfig config, int count) {
         Path[] icons = new Path[count];
         int i = 0;
         if (config.tempCabin && i < count) {
-            icons[i++] = car();
+            icons[i++] = MdiIcons.cabin();
         }
         if (config.tempOutside && i < count) {
-            icons[i] = tree();
+            icons[i] = MdiIcons.outside();
         }
         return icons;
     }
 
     /**
-     * В строку: иконка, число; между показателями — пустое место. Иконка высотой с цифру
-     * стоит на базовой линии; всё вместе уменьшается, если не влезает в 90% ширины окна.
+     * В строку: иконка, число; между показателями — пустое место. Иконка чуть выше цифры
+     * и по центру её высоты; всё вместе уменьшается, если не влезает в 90% ширины окна.
      */
     private static void drawWithIcons(Canvas canvas, Paint paint, SceneConfig.Layer layer,
             String[] parts, Path[] icons) {
@@ -166,7 +166,7 @@ final class SceneRenderer {
         float total = 0;
         float[] widths = new float[parts.length];
         for (int i = 0; i < parts.length; i++) {
-            widths[i] = (icons[i] == null ? 0 : iconWidth(icons[i]) * unit + unit * ICON_GAP)
+            widths[i] = (icons[i] == null ? 0 : iconWidth(icons[i]) * unit * ICON_SIZE + unit * ICON_GAP)
                     + paint.measureText(parts[i]);
             total += widths[i] + (i > 0 ? unit * GROUP_GAP : 0);
         }
@@ -184,11 +184,12 @@ final class SceneRenderer {
             }
             if (icons[i] != null) {
                 Path icon = new Path();
-                matrix.setScale(unit, unit);
-                matrix.postTranslate(x, y - unit);
+                float side = unit * ICON_SIZE;
+                matrix.setScale(side, side);
+                matrix.postTranslate(x, y - unit / 2 - side / 2);
                 icons[i].transform(matrix, icon);
                 canvas.drawPath(icon, paint);
-                x += iconWidth(icons[i]) * unit + unit * ICON_GAP;
+                x += iconWidth(icons[i]) * side + unit * ICON_GAP;
             }
             canvas.drawText(parts[i], x, y, paint);
             x += paint.measureText(parts[i]);
@@ -197,6 +198,8 @@ final class SceneRenderer {
 
     /** Разбежка вокруг «·» без иконок, px; с иконками — {@link #GROUP_GAP} высот цифры. */
     private static final int TEMP_GAP = 10;
+    /** Высота иконки в высотах цифры. */
+    private static final float ICON_SIZE = 1.25f;
     private static final float ICON_GAP = 0.3f;
     private static final float GROUP_GAP = 0.9f;
 
@@ -204,58 +207,6 @@ final class SceneRenderer {
         android.graphics.RectF bounds = new android.graphics.RectF();
         icon.computeBounds(bounds, true);
         return bounds.right;
-    }
-
-    /** Машина сбоку в квадрате высотой 1 (низ колёс — 1), окна и арки вырезаны. */
-    static Path car() {
-        float w = 1.7f;
-        Path body = new Path();
-        body.addRoundRect(0, 0.4f, w, 0.8f, 0.12f, 0.12f, Path.Direction.CW);
-        Path roof = new Path();
-        roof.moveTo(0.26f * w, 0.42f);
-        roof.lineTo(0.38f * w, 0.06f);
-        roof.lineTo(0.68f * w, 0.06f);
-        roof.lineTo(0.86f * w, 0.42f);
-        roof.close();
-        body.op(roof, Path.Op.UNION);
-        Path cut = new Path();
-        cut.moveTo(0.41f * w, 0.16f);
-        cut.lineTo(0.52f * w, 0.16f);
-        cut.lineTo(0.52f * w, 0.4f);
-        cut.lineTo(0.35f * w, 0.4f);
-        cut.close();
-        cut.moveTo(0.56f * w, 0.16f);
-        cut.lineTo(0.66f * w, 0.16f);
-        cut.lineTo(0.77f * w, 0.4f);
-        cut.lineTo(0.56f * w, 0.4f);
-        cut.close();
-        cut.addCircle(0.24f * w, 0.8f, 0.22f, Path.Direction.CW);
-        cut.addCircle(0.76f * w, 0.8f, 0.22f, Path.Direction.CW);
-        body.op(cut, Path.Op.DIFFERENCE);
-        Path wheels = new Path();
-        wheels.addCircle(0.24f * w, 0.8f, 0.16f, Path.Direction.CW);
-        wheels.addCircle(0.76f * w, 0.8f, 0.16f, Path.Direction.CW);
-        body.op(wheels, Path.Op.UNION);
-        return body;
-    }
-
-    /** Ёлка в квадрате высотой 1: три яруса и ствол. */
-    static Path tree() {
-        float w = 0.85f;
-        Path tree = new Path();
-        float[][] tiers = {{0, 0.36f, 0.3f}, {0.16f, 0.6f, 0.4f}, {0.34f, 0.84f, 0.5f}};
-        for (float[] tier : tiers) {
-            Path part = new Path();
-            part.moveTo(w / 2, tier[0]);
-            part.lineTo(w / 2 + tier[2] * w, tier[1]);
-            part.lineTo(w / 2 - tier[2] * w, tier[1]);
-            part.close();
-            tree.op(part, Path.Op.UNION);
-        }
-        Path trunk = new Path();
-        trunk.addRect(w * 0.4f, 0.8f, w * 0.6f, 1f, Path.Direction.CW);
-        tree.op(trunk, Path.Op.UNION);
-        return tree;
     }
 
     /** В строку: показатели через «·», разбежка gap px по обе стороны точки. */

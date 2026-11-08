@@ -14,6 +14,12 @@ Copyright (c) 2026 mmwtl
   перенесены на Java из app/src/main/java/com/g992/anhud/hudbridge/
   (Gcp.kt, QnxShell.kt, DaemonInstaller.kt).
 
+Значки температуры (app/src/main/java/com/mmwtl/atlasdim/MdiIcons.java) —
+контуры car-seat и weather-partly-cloudy из Material Design Icons
+(Pictogrammers, https://pictogrammers.com, @mdi/svg 7.4.47) под Apache
+License 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Изменения:
+команды пути переведены в абсолютные M/L/C/Z, контур масштабирован.
+
 Лицензия MIT из файла LICENSE распространяется только на собственный код
 Atlas Dim. На перечисленные компоненты распространяются условия ANHUD; права
 на них принадлежат авторам ANHUD.
