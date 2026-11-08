@@ -41,7 +41,7 @@ public final class SceneService extends Service {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable retry = this::applySaved;
     private SceneSession session;
-    private GibSensors sensors;
+    private CarSensors sensors;
     private int failures;
     /** Сессии, ещё не завершившие очистку (в том числе заменённые). */
     private int running;
@@ -141,8 +141,11 @@ public final class SceneService extends Service {
             return;
         }
         if (config.fuel.enabled || config.temp.enabled) {
+            if (sensors != null && sensors.direct != config.directCar) {
+                stopSensors();
+            }
             if (sensors == null) {
-                sensors = new GibSensors(this);
+                sensors = new CarSensors(this, config.directCar);
                 sensors.start();
             }
         } else {

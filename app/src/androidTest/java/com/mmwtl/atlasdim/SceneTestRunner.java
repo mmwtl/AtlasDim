@@ -164,22 +164,22 @@ public final class SceneTestRunner extends Instrumentation {
         config.fuelFree = false;
         check(SceneRenderer.fuel(config, 50d).equals("29 л"), "liters only");
         // Ответ моста: неявный broadcast со строковыми extras, другой датчик игнорируется.
-        android.content.Intent other = new android.content.Intent(GibSensors.SENSOR_FLOAT_CHANGED)
+        android.content.Intent other = new android.content.Intent(CarSensors.SENSOR_FLOAT_CHANGED)
                 .putExtra("id", "123").putExtra("value", "7");
-        android.content.Intent result = new android.content.Intent(GibSensors.SENSOR_FLOAT_RESULT)
-                .putExtra("id", String.valueOf(GibSensors.SENSOR_FUEL_PERCENTAGE))
+        android.content.Intent result = new android.content.Intent(CarSensors.SENSOR_FLOAT_RESULT)
+                .putExtra("id", String.valueOf(CarSensors.SENSOR_FUEL_PERCENTAGE))
                 .putExtra("value", "75.0");
-        GibSensors.accept(result);
-        GibSensors.accept(other);
-        check(Double.valueOf(75).equals(GibSensors.value(GibSensors.SENSOR_FUEL_PERCENTAGE)), "sensor value from bridge");
-        GibSensors sensor = new GibSensors(getTargetContext());
+        CarSensors.accept(result);
+        CarSensors.accept(other);
+        check(Double.valueOf(75).equals(CarSensors.value(CarSensors.SENSOR_FUEL_PERCENTAGE)), "sensor value from bridge");
+        CarSensors sensor = new CarSensors(getTargetContext(), false);
         runOnMainSync(sensor::start);
         try {
             // Если на устройстве стоит ГИБ, он ответит на запрос при start(); ждём этот ответ.
             Thread.sleep(1500);
-            getTargetContext().sendBroadcast(new android.content.Intent(GibSensors.SENSOR_FLOAT_CHANGED)
-                    .putExtra("id", GibSensors.SENSOR_FUEL_PERCENTAGE).putExtra("value", 40f));
-            await(() -> Double.valueOf(40).equals(GibSensors.value(GibSensors.SENSOR_FUEL_PERCENTAGE)), 3000, "registered receiver");
+            getTargetContext().sendBroadcast(new android.content.Intent(CarSensors.SENSOR_FLOAT_CHANGED)
+                    .putExtra("id", CarSensors.SENSOR_FUEL_PERCENTAGE).putExtra("value", 40f));
+            await(() -> Double.valueOf(40).equals(CarSensors.value(CarSensors.SENSOR_FUEL_PERCENTAGE)), 3000, "registered receiver");
         } finally {
             runOnMainSync(sensor::stop);
         }
@@ -454,8 +454,8 @@ public final class SceneTestRunner extends Instrumentation {
             config.background.enabled = false;
             config.clock.enabled = false;
             config.fuel.enabled = true;
-            GibSensors.accept(new android.content.Intent(GibSensors.SENSOR_FLOAT_CHANGED)
-                    .putExtra("id", String.valueOf(GibSensors.SENSOR_FUEL_PERCENTAGE))
+            CarSensors.accept(new android.content.Intent(CarSensors.SENSOR_FLOAT_CHANGED)
+                    .putExtra("id", String.valueOf(CarSensors.SENSOR_FUEL_PERCENTAGE))
                     .putExtra("value", "50"));
             SceneSession session = new SceneSession(getTargetContext(), config, s -> { });
             session.start();
@@ -464,8 +464,8 @@ public final class SceneTestRunner extends Instrumentation {
                 check(intAt(fuel.hello, 4) == config.fuel.x && intAt(fuel.hello, 12) == 300,
                         "fuel window geometry");
                 int frames = fuel.frames;
-                GibSensors.accept(new android.content.Intent(GibSensors.SENSOR_FLOAT_CHANGED)
-                        .putExtra("id", String.valueOf(GibSensors.SENSOR_FUEL_PERCENTAGE))
+                CarSensors.accept(new android.content.Intent(CarSensors.SENSOR_FLOAT_CHANGED)
+                        .putExtra("id", String.valueOf(CarSensors.SENSOR_FUEL_PERCENTAGE))
                         .putExtra("value", "60"));
                 await(() -> fuel.frames > frames, 2000, "new fuel level redraws");
                 int pings = fuel.pings;

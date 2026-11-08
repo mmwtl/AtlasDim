@@ -81,7 +81,8 @@ release не собирается.
 
 - [ANHUD](https://github.com/g992/ANHUD) — демон `ghudbridgelited`, протокол gcp/1 и сам
   принцип вывода из Android на экраны QNX.
-- [GInputBridge](https://github.com/mmwtl/GInputBridge) — данные о топливе.
+- [GInputBridge](https://github.com/mmwtl/GInputBridge) — данные о топливе и температурах
+  (или напрямую через ECarX API ГУ, как в Atlas Climate Widget).
 
 ## Лицензия
 

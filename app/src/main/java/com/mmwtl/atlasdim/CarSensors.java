@@ -14,14 +14,16 @@ import android.util.Log;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Датчики GInputBridge (ГИБ, {@code com.salat.gbinder}): топливо и температуры в салоне и
- * за бортом. Контракт и подписка — по образцу AtlasClimateWidget ({@code Gib.java},
- * {@code ClimateService}, id из {@code Hvac.java}): запросы — явные broadcast в пакет
- * моста по одному id, ответы и изменения — неявные broadcast с extras id/value, их
- * получает только динамически зарегистрированный приёмник. Значения общие на процесс:
- * их читают и кадры для QNX, и предпросмотр.
+ * Датчики автомобиля: топливо и температуры в салоне и за бортом. Источник — GInputBridge
+ * (ГИБ, {@code com.salat.gbinder}) или, если выбрано «без GInputBridge», ECarX API ГУ
+ * напрямую ({@link EcarxSensors}); без ECarX API прямой режим откатывается на мост.
+ * Контракт моста — по образцу AtlasClimateWidget ({@code Gib.java}, {@code ClimateService},
+ * id из {@code Hvac.java}): запросы — явные broadcast в пакет моста по одному id, ответы и
+ * изменения — неявные broadcast с extras id/value, их получает только динамически
+ * зарегистрированный приёмник. Значения общие на процесс: их читают и кадры для QNX,
+ * и предпросмотр.
  */
-final class GibSensors {
+final class CarSensors {
     private static final String TAG = "AtlasDim";
     static final String PACKAGE = "com.salat.gbinder";
     static final String GET_FLOAT_SENSOR = PACKAGE + ".GET_FLOAT_SENSOR";
@@ -46,7 +48,16 @@ final class GibSensors {
     /** id датчика → {значение, elapsedRealtime ответа}. */
     private static final ConcurrentHashMap<Integer, double[]> READINGS = new ConcurrentHashMap<>();
 
+    enum Source { BRIDGE, DIRECT, DIRECT_MISSING }
+
+    /** Откуда идут показания у последнего запущенного экземпляра; null — ещё не запускали. */
+    private static volatile Source source;
+    /** Режим, в котором получены показания в {@link #READINGS}. */
+    private static volatile Boolean readingsDirect;
+
     private final Context context;
+    final boolean direct;
+    private EcarxSensors ecarx;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean registered;
 
@@ -65,8 +76,17 @@ final class GibSensors {
         }
     };
 
-    GibSensors(Context context) {
+    CarSensors(Context context, boolean direct) {
         this.context = context.getApplicationContext();
+        this.direct = direct;
+    }
+
+    static Source source() {
+        return source;
+    }
+
+    static void put(int id, double value) {
+        READINGS.put(id, new double[] {value, SystemClock.elapsedRealtime()});
     }
 
     /** Последнее свежее показание датчика или null. */
@@ -78,9 +98,24 @@ final class GibSensors {
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag") // targetSdk 30: флаг экспорта не нужен.
     void start() {
-        if (registered) {
+        if (registered || ecarx != null) {
             return;
         }
+        // Показания другого источника не должны сойти за ответ этого.
+        if (readingsDirect != null && readingsDirect != direct) {
+            READINGS.clear();
+        }
+        readingsDirect = direct;
+        if (direct) {
+            ecarx = EcarxSensors.connect(context, SENSORS);
+            if (ecarx != null) {
+                source = Source.DIRECT;
+                ecarx.start();
+                return;
+            }
+            Log.w(TAG, "sensors: прямой режим без ECarX API — через GInputBridge");
+        }
+        source = direct ? Source.DIRECT_MISSING : Source.BRIDGE;
         IntentFilter filter = new IntentFilter();
         filter.addAction(SENSOR_FLOAT_RESULT);
         filter.addAction(SENSOR_FLOAT_CHANGED);
@@ -95,6 +130,10 @@ final class GibSensors {
     }
 
     void stop() {
+        if (ecarx != null) {
+            ecarx.stop();
+            ecarx = null;
+        }
         handler.removeCallbacks(poll);
         if (registered) {
             try {
@@ -130,7 +169,7 @@ final class GibSensors {
         if (id == null || reading == null || !known(id)) {
             return;
         }
-        READINGS.put((int) (double) id, new double[] {reading, SystemClock.elapsedRealtime()});
+        put((int) (double) id, reading);
     }
 
     private static boolean known(double id) {

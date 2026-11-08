@@ -70,6 +70,7 @@ public final class MainActivity extends ScaledActivity {
     private static final int TAB_SYSTEM = 4;
     private static final int KEEP_REPORTS = 20;
     private static final String KEY_UNRESTRICTED = "unrestricted";
+    private static final String KEY_DIRECT_CAR = "directCar";
     private static final int[] TAB_LABELS = {R.string.tab_clock, R.string.tab_fuel,
             R.string.tab_temp, R.string.tab_background, R.string.tab_system};
     private boolean ready;
@@ -87,6 +88,8 @@ public final class MainActivity extends ScaledActivity {
     private Switch boot;
     private TextView autostart;
     private Switch unrestricted;
+    private Switch directCar;
+    private TextView sensorSource;
     private TextView backgroundLocked;
     private Button diagButton;
     private TextView diagStatus;
@@ -124,7 +127,7 @@ public final class MainActivity extends ScaledActivity {
     private Switch tempIcons;
     private Switch tempPlate;
     private FontPicker tempFont;
-    private GibSensors sensors;
+    private CarSensors sensors;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -172,8 +175,24 @@ public final class MainActivity extends ScaledActivity {
         // Пользователь мог только что вернуться из спецвозможностей.
         autostart.setText(AutostartService.enabled(this) ? R.string.autostart_on
                 : R.string.autostart_hint);
-        sensors = new GibSensors(this);
+        startSensors();
+    }
+
+    /** Датчики для предпросмотра — в режиме, выбранном переключателем. */
+    private void startSensors() {
+        if (sensors != null) {
+            sensors.stop();
+        }
+        sensors = new CarSensors(this, directCar.isChecked());
         sensors.start();
+        paintSensorSource();
+    }
+
+    private void paintSensorSource() {
+        CarSensors.Source source = CarSensors.source();
+        sensorSource.setText(source == CarSensors.Source.DIRECT ? R.string.direct_car_on
+                : source == CarSensors.Source.DIRECT_MISSING ? R.string.direct_car_missing
+                : R.string.direct_car_bridge);
     }
 
     @Override
@@ -433,6 +452,16 @@ public final class MainActivity extends ScaledActivity {
                 setExpanded(manualHead, manual, getString(R.string.link_manual),
                         manual.getVisibility() != View.VISIBLE));
 
+        LinearLayout car = card(page, R.string.sensors_title);
+        directCar = toggle(car, R.string.direct_car, prefs.getBoolean(KEY_DIRECT_CAR, false));
+        directCar.setOnCheckedChangeListener((v, value) -> {
+            startSensors();
+            refreshPreview();
+        });
+        car.addView(hint(R.string.direct_car_hint));
+        sensorSource = hint("");
+        car.addView(sensorSource);
+
         LinearLayout diag = card(page, R.string.diag_title);
         diag.addView(hint(R.string.diag_hint));
         diagButton = Ui.button(this, R.string.diag_button);
@@ -685,6 +714,7 @@ public final class MainActivity extends ScaledActivity {
     private SceneConfig readConfig() {
         SceneConfig config = new SceneConfig();
         config.unrestricted = unrestricted.isChecked();
+        config.directCar = directCar.isChecked();
         config.host = host.getText().toString().trim();
         String typed = password.getText().toString();
         config.password = typed.isEmpty() ? BuildConfig.QNX_PASSWORD : typed;
@@ -838,6 +868,7 @@ public final class MainActivity extends ScaledActivity {
         edit.putString("password", password.getText().toString());
         edit.putBoolean(SceneService.KEY_BOOT, boot.isChecked());
         edit.putBoolean(KEY_UNRESTRICTED, unrestricted.isChecked());
+        edit.putBoolean(KEY_DIRECT_CAR, directCar.isChecked());
         clock.save(edit);
         fuel.save(edit);
         temp.save(edit);

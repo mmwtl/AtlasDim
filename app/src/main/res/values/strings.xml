@@ -76,10 +76,16 @@
     <string name="font_user_failed">Шрифт не загружен: %1$s</string>
     <string name="font_missing_hint">GeelyBCTF штатной приборки. Ещё не загружен: заберётся с QNX один раз при «Показать / применить», до этого — системный.</string>
 
+    <string name="sensors_title">Датчики автомобиля</string>
+    <string name="direct_car">Работать без GInputBridge (эксперимент)</string>
+    <string name="direct_car_hint">Топливо и температуры читаются напрямую из ГУ, как в Atlas Climate Widget, — GInputBridge не нужен и его запуска ждать не надо. Режим пробный: если показания неверные или пропали, выключите его. Применяется кнопкой «Показать / применить».</string>
+    <string name="direct_car_on">Сейчас: напрямую к автомобилю.</string>
+    <string name="direct_car_missing">Сейчас: прямое подключение недоступно (нет ECarX API) — используется GInputBridge.</string>
+    <string name="direct_car_bridge">Сейчас: через GInputBridge.</string>
     <string name="temp_cabin">В салоне</string>
     <string name="temp_outside">За бортом</string>
     <string name="temp_icons">Иконки: сиденье — салон, облако — улица</string>
-    <string name="temp_hint">Датчики температуры из GInputBridge, как в Atlas Climate Widget, целыми градусами. Штатная приборка уже показывает температуру за бортом — включите её здесь, если хотите видеть обе рядом. Без GInputBridge или до первого ответа — «—».</string>
+    <string name="temp_hint">Датчики температуры из GInputBridge или напрямую (вкладка «Система»), как в Atlas Climate Widget, целыми градусами. Штатная приборка уже показывает температуру за бортом — включите её здесь, если хотите видеть обе рядом. До первого ответа датчика — «—».</string>
     <string name="fuel_shown_title">Что показывать</string>
     <string name="fuel_liters">Залито, л</string>
     <string name="fuel_free">Свободно, л</string>
@@ -97,7 +103,7 @@
     <string name="fuel_formula_summary">Литры = датчик × множитель + смещение</string>
     <string name="fuel_multiplier">Множитель</string>
     <string name="fuel_offset">Смещение</string>
-    <string name="fuel_formula_hint">Датчик Fuel Percentage (0–100) из GInputBridge, как в Atlas Climate Widget. По умолчанию бак 54 л: × 0.5 + 4. До 6 знаков после запятой. Без GInputBridge или до первого ответа — «—».</string>
+    <string name="fuel_formula_hint">Датчик Fuel Percentage (0–100) из GInputBridge или напрямую (вкладка «Система»), как в Atlas Climate Widget. По умолчанию бак 54 л: × 0.5 + 4. До 6 знаков после запятой. До первого ответа датчика — «—».</string>
 
     <string name="background_picture_title">Картинка</string>
     <string name="background_add">＋\nКартинка</string>

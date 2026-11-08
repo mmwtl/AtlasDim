@@ -25,6 +25,8 @@ final class SceneConfig {
     final Layer fuel = new Layer(Kind.FUEL);
     final Layer temp = new Layer(Kind.TEMP);
     final Layer background = new Layer(Kind.BACKGROUND);
+    /** Датчики напрямую через ECarX API, без GInputBridge (эксперимент). */
+    boolean directCar;
     /** Без проверок под модель (лампы, слои приборки): только для экспериментов. */
     boolean unrestricted;
     boolean seconds;
@@ -216,6 +218,7 @@ final class SceneConfig {
         tempFont = other.tempFont;
         tempFontFile = other.tempFontFile;
         unrestricted = other.unrestricted;
+        directCar = other.directCar;
     }
 
     Layer layer(Kind kind) {
@@ -289,7 +292,7 @@ final class SceneConfig {
                     .put("fuelGapV", fuelGapV).put("tempCabin", tempCabin)
                     .put("tempOutside", tempOutside).put("tempIcons", tempIcons)
                     .put("tempPlate", tempPlate).put("tempFont", tempFont)
-                    .put("tempFontFile", tempFontFile).put("unrestricted", unrestricted);
+                    .put("tempFontFile", tempFontFile).put("unrestricted", unrestricted).put("directCar", directCar);
             for (Layer layer : layers()) {
                 json.put(layer.id(), layer.toJson());
             }
@@ -345,6 +348,7 @@ final class SceneConfig {
         config.tempFont = json.optInt("tempFont", config.tempFont);
         config.tempFontFile = json.optString("tempFontFile", config.tempFontFile);
         config.unrestricted = json.optBoolean("unrestricted", config.unrestricted);
+        config.directCar = json.optBoolean("directCar", config.directCar);
         for (Layer layer : config.layers()) {
             JSONObject item = json.optJSONObject(layer.id());
             if (item != null) {

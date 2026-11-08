@@ -76,10 +76,10 @@ final class SceneRenderer {
             case CLOCK:
                 return time(config);
             case FUEL:
-                return fuel(config, GibSensors.value(GibSensors.SENSOR_FUEL_PERCENTAGE));
+                return fuel(config, CarSensors.value(CarSensors.SENSOR_FUEL_PERCENTAGE));
             case TEMP:
-                return temperature(config, GibSensors.value(GibSensors.SENSOR_TEMPERATURE_INDOOR),
-                        GibSensors.value(GibSensors.SENSOR_TEMPERATURE_AMBIENT));
+                return temperature(config, CarSensors.value(CarSensors.SENSOR_TEMPERATURE_INDOOR),
+                        CarSensors.value(CarSensors.SENSOR_TEMPERATURE_AMBIENT));
             default:
                 return "";
         }
