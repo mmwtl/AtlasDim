@@ -354,7 +354,7 @@ public final class MainActivity extends ScaledActivity {
         tempCabin = toggle(shown, R.string.temp_cabin, prefs.getBoolean("temp.cabin", true));
         tempOutside = toggle(shown, R.string.temp_outside, prefs.getBoolean("temp.outside", false));
         tempIcons = toggle(shown, R.string.temp_icons, prefs.getBoolean("temp.icons", true));
-        tempPlate = toggle(shown, R.string.digits_plate, prefs.getBoolean("temp.plate", false));
+        tempPlate = toggle(shown, R.string.temp_plate, prefs.getBoolean("temp.plate", true));
         tempFont = new FontPicker(shown, prefs.getInt("temp.font", ClusterFont.SYSTEM),
                 prefs.getString("temp.fontFile", ""));
         shown.addView(hint(R.string.temp_hint));

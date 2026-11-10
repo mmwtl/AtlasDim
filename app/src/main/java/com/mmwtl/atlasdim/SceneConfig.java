@@ -67,7 +67,7 @@ final class SceneConfig {
     boolean tempCabin = true;
     boolean tempOutside;
     boolean tempIcons = true;
-    boolean tempPlate;
+    boolean tempPlate = true;
     int tempFont = ClusterFont.SYSTEM;
     String tempFontFile = "";
 

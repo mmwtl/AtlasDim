@@ -111,7 +111,8 @@ final class SceneRenderer {
         boolean isFuel = layer.kind == SceneConfig.Kind.FUEL;
         boolean isTemp = layer.kind == SceneConfig.Kind.TEMP;
         if (isFuel ? config.fuelPlate : isTemp ? config.tempPlate : config.plate) {
-            paint.setColor(Color.argb(150, 0, 0, 0));
+            // Температура ставится поверх штатной — подложка её полностью закрывает.
+            paint.setColor(Color.argb(isTemp ? 255 : 150, 0, 0, 0));
             float radius = layer.h * 0.2f;
             canvas.drawRoundRect(0, 0, layer.w, layer.h, radius, radius, paint);
         }
