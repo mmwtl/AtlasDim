@@ -7,6 +7,8 @@
     <string name="tab_temp">Температура</string>
     <string name="tab_background">Фон</string>
     <string name="tab_system">Система</string>
+    <string name="vehicle_title">Модель автомобиля</string>
+    <string name="vehicle_hint">Выберите профиль расположения штатных шрифтов в resource.kzb. Для Cityray проверена прошивка G426_J1.</string>
 
     <string name="preview_title">Приборка · 1920×532</string>
     <string name="preview_hint">Перетащите окно пальцем, угол — изменить размер. %1$s · %2$s · %3$s · %4$s</string>
