@@ -53,6 +53,19 @@ final class ClusterFont {
             new Face("GeelyBCTF-Bold.ttf", 0x68935f0, 463544,
                     "f7165f21b904d704971376560d364c11f0e8824242a2854ab34542f3fa9a27f8")};
 
+    static final String MODEL_ORIGINAL = "original";
+    static final String MODEL_CITYRAY = "cityray";
+    static final String MODEL_PREF = "vehicle.model";
+    private static volatile String model = MODEL_ORIGINAL;
+    private static final long CITYRAY_KZB_SIZE = 60536188L;
+    // Verified from Cityray G426_J1 / FX11_HEV resource.kzb.
+    private static final Face[] CITYRAY_FACES = {null,
+            new Face("Cityray-GeelyBCTF-Regular.ttf", 0x3992620L, 83288,
+                    "5c9b8ed5763106dffaa65a0264e8fe98351be75604403520a81eaf544ff05db2"),
+            new Face("Cityray-GeelyBCTF-Switches.ttf", 0x39a6b80L, 82312,
+                    "f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d"),
+            new Face("Cityray-GeelyBCTF-Bold.ttf", 0x396aa1cL, 80268,
+                    "0a59701719059ee8b42684b2067611872456fda438d7155cb56b13da5ee3ac27")};
     private static File dir;
 
     private ClusterFont() {
@@ -61,6 +74,8 @@ final class ClusterFont {
     static synchronized void init(Context context) {
         if (dir == null) {
             dir = context.getApplicationContext().getFilesDir();
+            model = context.getSharedPreferences(SceneService.PREFS, Context.MODE_PRIVATE)
+                    .getString(MODEL_PREF, MODEL_ORIGINAL);
         }
     }
 
@@ -105,13 +120,28 @@ final class ClusterFont {
         }
     }
 
+    static void setModel(String value) {
+        model = MODEL_CITYRAY.equals(value) ? MODEL_CITYRAY : MODEL_ORIGINAL;
+    }
+
     private static void fetch(QnxShell qnx, int font) throws IOException {
         if (saved(font)) {
             return;
         }
         Face face = face(font);
-        QnxShell.Result r = qnx.exec("for f in " + KZB + "; do dd if=$f bs=8 skip="
-                + face.offset / 8 + " count=" + face.size / 8
+        if (MODEL_CITYRAY.equals(model)) {
+            QnxShell.Result check = qnx.exec("for f in " + KZB
+                    + "; do wc -c < \"$f\"; break; done");
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("(?m)^\\s*(\\d+)\\s*$").matcher(check.output);
+            if (!check.ok() || !matcher.find()
+                    || Long.parseLong(matcher.group(1)) != CITYRAY_KZB_SIZE) {
+                throw new IOException("resource.kzb не соответствует проверенной прошивке Cityray");
+            }
+        }
+        int blockSize = MODEL_CITYRAY.equals(model) ? 4 : 8;
+        QnxShell.Result r = qnx.exec("for f in " + KZB + "; do dd if=$f bs=" + blockSize + " skip="
+                + face.offset / blockSize + " count=" + face.size / blockSize
                 + " 2>/dev/null | openssl base64; break; done", FETCH_TIMEOUT_MS);
         byte[] data = Base64.decode(r.output.replaceAll("[^A-Za-z0-9+/=]", ""), Base64.DEFAULT);
         if (data.length != face.size || !face.sha256.equals(sha256(data))) {
@@ -132,7 +162,8 @@ final class ClusterFont {
     }
 
     private static Face face(int font) {
-        return font > SYSTEM && font < FACES.length ? FACES[font] : null;
+        Face[] faces = MODEL_CITYRAY.equals(model) ? CITYRAY_FACES : FACES;
+        return font > SYSTEM && font < faces.length ? faces[font] : null;
     }
 
     static String sha256(byte[] data) {

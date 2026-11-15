@@ -25,6 +25,9 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -92,6 +95,7 @@ public final class MainActivity extends ScaledActivity {
     private TextView sensorSource;
     private TextView backgroundLocked;
     private Button diagButton;
+    private Spinner vehicleModel;
     private TextView diagStatus;
     private LayerEditor clock;
     private LayerEditor fuel;
@@ -451,6 +455,30 @@ public final class MainActivity extends ScaledActivity {
         manualHead.setOnClickListener(v ->
                 setExpanded(manualHead, manual, getString(R.string.link_manual),
                         manual.getVisibility() != View.VISIBLE));
+
+        LinearLayout vehicle = card(page, R.string.vehicle_title);
+        vehicle.addView(hint(R.string.vehicle_hint));
+        vehicleModel = new Spinner(this);
+        vehicleModel.setAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[] {"Geely (исходный профиль)", "Geely Cityray (G426_J1)"}));
+        vehicleModel.setSelection(ClusterFont.MODEL_CITYRAY.equals(
+                prefs.getString(ClusterFont.MODEL_PREF, ClusterFont.MODEL_ORIGINAL)) ? 1 : 0);
+        vehicleModel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view,
+                    int position, long id) {
+                ClusterFont.setModel(position == 1
+                        ? ClusterFont.MODEL_CITYRAY : ClusterFont.MODEL_ORIGINAL);
+                if (ready) {
+                    clockFont.paint();
+                    fuelFont.paint();
+                    tempFont.paint();
+                    refreshPreview();
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        vehicle.addView(vehicleModel);
 
         LinearLayout car = card(page, R.string.sensors_title);
         directCar = toggle(car, R.string.direct_car, prefs.getBoolean(KEY_DIRECT_CAR, false));
@@ -864,6 +892,8 @@ public final class MainActivity extends ScaledActivity {
 
     private void saveConfig() {
         SharedPreferences.Editor edit = prefs().edit();
+        edit.putString(ClusterFont.MODEL_PREF, vehicleModel.getSelectedItemPosition() == 1
+                ? ClusterFont.MODEL_CITYRAY : ClusterFont.MODEL_ORIGINAL);
         edit.putString("host", host.getText().toString().trim());
         edit.putString("password", password.getText().toString());
         edit.putBoolean(SceneService.KEY_BOOT, boot.isChecked());
