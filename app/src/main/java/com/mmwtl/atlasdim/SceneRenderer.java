@@ -121,7 +121,7 @@ final class SceneRenderer {
         Typeface cluster = font == ClusterFont.USER
                 ? UserFonts.typeface(isFuel ? config.fuelFontFile
                         : isTemp ? config.tempFontFile : config.clockFontFile)
-                : ClusterFont.typeface(font);
+                : ClusterFont.typeface(font, config.vehicle);
         paint.setTypeface(cluster != null ? cluster
                 : Typeface.create("sans-serif-medium", Typeface.NORMAL));
         String[] parts = text.split(String.valueOf(PARTS));

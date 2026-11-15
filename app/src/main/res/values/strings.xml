@@ -7,8 +7,24 @@
     <string name="tab_temp">Температура</string>
     <string name="tab_background">Фон</string>
     <string name="tab_system">Система</string>
-    <string name="vehicle_title">Модель автомобиля</string>
-    <string name="vehicle_hint">Выберите профиль расположения штатных шрифтов в resource.kzb. Для Cityray проверена прошивка G426_J1.</string>
+    <string name="vehicle_title">Модель ГУ</string>
+    <string name="vehicle_hint">От модели зависят раскладка слоёв приборки (экран, z, доступность фона) и шрифты GeelyBCTF из resource.kzb. При смене модели экран и z слоёв сбрасываются на проверенные для неё; на приборку изменения уходят по «Показать / применить».</string>
+    <string name="vehicle_detected">Совпадает с прошивкой (%1$s).</string>
+    <string name="vehicle_mismatch">Прошивка — %1$s, по ней подходит %2$s. Чужая раскладка может сделать приборку чёрной — тогда «Убрать всё».</string>
+    <string name="vehicle_changed">Модель ГУ: %1$s. Экран и z слоёв — по умолчанию.</string>
+    <string name="backup_title">Импорт и экспорт настроек</string>
+    <string name="backup_hint">JSON содержит все настройки вкладок, связи и масштаб. Экспорт отправляет файл через «Поделиться» — например, себе в Telegram. Не переносятся: пароль QNX, модель ГУ, снятие ограничений и включённая композиция. Свои картинки фона и шрифты переносятся только названиями.</string>
+    <string name="backup_export">Экспортировать настройки в JSON</string>
+    <string name="backup_import">Импортировать настройки из JSON</string>
+    <string name="backup_no_picker">В прошивке нет системного выбора файлов</string>
+    <string name="backup_export_failed">Не удалось экспортировать настройки</string>
+    <string name="backup_import_failed">Не удалось прочитать файл</string>
+    <string name="backup_import_invalid">Это не файл настроек Atlas Dim</string>
+    <string name="backup_import_title">Импортировать настройки?</string>
+    <string name="backup_import_summary">В файле настроек: %1$d, модель ГУ — %2$s. Текущие настройки будут заменены.</string>
+    <string name="backup_import_other_vehicle">\n\nФайл с другой модели: экран и z слоёв останутся по умолчанию для %1$s.</string>
+    <string name="backup_import_confirm">Импортировать</string>
+    <string name="backup_import_done">Настройки импортированы. На приборку — по «Показать / применить».</string>
 
     <string name="preview_title">Приборка · 1920×532</string>
     <string name="preview_hint">Перетащите окно пальцем, угол — изменить размер. %1$s · %2$s · %3$s · %4$s</string>

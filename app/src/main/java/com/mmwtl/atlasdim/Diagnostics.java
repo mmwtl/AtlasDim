@@ -84,6 +84,8 @@ final class Diagnostics {
                 .append("Android ").append(Build.VERSION.RELEASE).append(" (SDK ")
                 .append(Build.VERSION.SDK_INT).append("), ").append(Build.MANUFACTURER)
                 .append(' ').append(Build.MODEL).append('\n')
+                .append("Модель ГУ в приложении: ").append(Vehicle.label(Vehicle.current()))
+                .append('\n')
                 .append("Композиция: ").append(app.active ? "включена" : "выключена")
                 .append(", сервис ").append(app.serviceRunning ? "работает" : "не запущен")
                 .append('\n')

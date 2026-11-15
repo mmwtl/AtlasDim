@@ -95,7 +95,7 @@ public final class SceneService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        ClusterFont.init(this);
+        Vehicle.init(this); // До чтения композиции: старая — без модели.
     }
 
     @Override

@@ -29,7 +29,7 @@ final class ClusterFont {
     private static final String KZB = "/apps/cluster/*/bin/hmi/*/ClusterHMI/resource.kzb";
     private static final long FETCH_TIMEOUT_MS = 120000;
 
-    /** TTF внутри resource.kzb FX11_J1: смещение и размер кратны 8 — dd читает блоками по 8. */
+    /** TTF внутри resource.kzb: смещение, размер и SHA-256 начертания на своей модели. */
     private static final class Face {
         final String file;
         final long offset;
@@ -43,27 +43,33 @@ final class ClusterFont {
             this.size = size;
             this.sha256 = sha256;
         }
+
+        /** dd читает блоками по 8, если смещение и размер кратны 8, иначе по 4. */
+        int block() {
+            return offset % 8 == 0 && size % 8 == 0 ? 8 : 4;
+        }
     }
+
+    /** Switches на обеих моделях один и тот же файл: общее имя, второй раз не скачивается. */
+    private static final String SWITCHES = "GeelyBCTF-Switches.ttf";
+    private static final String SWITCHES_SHA256 =
+            "f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d";
 
     private static final Face[] FACES = {null,
             new Face("GeelyBCTF-Regular.ttf", 0x6918b20, 490032,
                     "50c7cbf722e910fa34486e27bec8e212f2e5ee29f9564148d22019522547f755"),
-            new Face("GeelyBCTF-Switches.ttf", 0x6990558, 82312,
-                    "f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d"),
+            new Face(SWITCHES, 0x6990558, 82312, SWITCHES_SHA256),
             new Face("GeelyBCTF-Bold.ttf", 0x68935f0, 463544,
                     "f7165f21b904d704971376560d364c11f0e8824242a2854ab34542f3fa9a27f8")};
 
-    static final String MODEL_ORIGINAL = "original";
-    static final String MODEL_CITYRAY = "cityray";
-    static final String MODEL_PREF = "vehicle.model";
-    private static volatile String model = MODEL_ORIGINAL;
-    private static final long CITYRAY_KZB_SIZE = 60536188L;
-    // Verified from Cityray G426_J1 / FX11_HEV resource.kzb.
+    /**
+     * Ситирей G426_J1: /apps/cluster/FX11_HEV/bin/hmi/GLY_FS11-A2J1/ClusterHMI/resource.kzb,
+     * проверено на машине (PR #1, docs/cityray-kzb-fonts.md). Bold не кратен 8 — dd по 4.
+     */
     private static final Face[] CITYRAY_FACES = {null,
             new Face("Cityray-GeelyBCTF-Regular.ttf", 0x3992620L, 83288,
                     "5c9b8ed5763106dffaa65a0264e8fe98351be75604403520a81eaf544ff05db2"),
-            new Face("Cityray-GeelyBCTF-Switches.ttf", 0x39a6b80L, 82312,
-                    "f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d"),
+            new Face(SWITCHES, 0x39a6b80L, 82312, SWITCHES_SHA256),
             new Face("Cityray-GeelyBCTF-Bold.ttf", 0x396aa1cL, 80268,
                     "0a59701719059ee8b42684b2067611872456fda438d7155cb56b13da5ee3ac27")};
     private static File dir;
@@ -74,14 +80,12 @@ final class ClusterFont {
     static synchronized void init(Context context) {
         if (dir == null) {
             dir = context.getApplicationContext().getFilesDir();
-            model = context.getSharedPreferences(SceneService.PREFS, Context.MODE_PRIVATE)
-                    .getString(MODEL_PREF, MODEL_ORIGINAL);
         }
     }
 
     /** Начертание или null: системный шрифт либо оно ещё не забрано с QNX. */
-    static synchronized Typeface typeface(int font) {
-        Face face = face(font);
+    static synchronized Typeface typeface(int font, String vehicle) {
+        Face face = face(font, vehicle);
         if (face == null || dir == null) {
             return null;
         }
@@ -96,52 +100,39 @@ final class ClusterFont {
         return face.typeface;
     }
 
-    static boolean saved(int font) {
-        return face(font) == null || typeface(font) != null;
+    static boolean saved(int font, String vehicle) {
+        return face(font, vehicle) == null || typeface(font, vehicle) != null;
     }
 
     /** Композиции нужно начертание, которого ещё нет, — без telnet не обойтись. */
     static boolean missing(SceneConfig config) {
-        return config.clock.enabled && !saved(config.clockFont)
-                || config.fuel.enabled && !saved(config.fuelFont)
-                || config.temp.enabled && !saved(config.tempFont);
+        return config.clock.enabled && !saved(config.clockFont, config.vehicle)
+                || config.fuel.enabled && !saved(config.fuelFont, config.vehicle)
+                || config.temp.enabled && !saved(config.tempFont, config.vehicle);
     }
 
     /** Забирает с QNX недостающие начертания композиции. */
     static void fetch(QnxShell qnx, SceneConfig config) throws IOException {
         if (config.clock.enabled) {
-            fetch(qnx, config.clockFont);
+            fetch(qnx, config.clockFont, config.vehicle);
         }
         if (config.fuel.enabled) {
-            fetch(qnx, config.fuelFont);
+            fetch(qnx, config.fuelFont, config.vehicle);
         }
         if (config.temp.enabled) {
-            fetch(qnx, config.tempFont);
+            fetch(qnx, config.tempFont, config.vehicle);
         }
     }
 
-    static void setModel(String value) {
-        model = MODEL_CITYRAY.equals(value) ? MODEL_CITYRAY : MODEL_ORIGINAL;
-    }
-
-    private static void fetch(QnxShell qnx, int font) throws IOException {
-        if (saved(font)) {
+    private static void fetch(QnxShell qnx, int font, String vehicle) throws IOException {
+        if (saved(font, vehicle)) {
             return;
         }
-        Face face = face(font);
-        if (MODEL_CITYRAY.equals(model)) {
-            QnxShell.Result check = qnx.exec("for f in " + KZB
-                    + "; do wc -c < \"$f\"; break; done");
-            java.util.regex.Matcher matcher = java.util.regex.Pattern
-                    .compile("(?m)^\\s*(\\d+)\\s*$").matcher(check.output);
-            if (!check.ok() || !matcher.find()
-                    || Long.parseLong(matcher.group(1)) != CITYRAY_KZB_SIZE) {
-                throw new IOException("resource.kzb не соответствует проверенной прошивке Cityray");
-            }
-        }
-        int blockSize = MODEL_CITYRAY.equals(model) ? 4 : 8;
-        QnxShell.Result r = qnx.exec("for f in " + KZB + "; do dd if=$f bs=" + blockSize + " skip="
-                + face.offset / blockSize + " count=" + face.size / blockSize
+        // Не та прошивка — не тот SHA-256 ниже: файл не сохраняется.
+        Face face = face(font, vehicle);
+        int block = face.block();
+        QnxShell.Result r = qnx.exec("for f in " + KZB + "; do dd if=$f bs=" + block + " skip="
+                + face.offset / block + " count=" + face.size / block
                 + " 2>/dev/null | openssl base64; break; done", FETCH_TIMEOUT_MS);
         byte[] data = Base64.decode(r.output.replaceAll("[^A-Za-z0-9+/=]", ""), Base64.DEFAULT);
         if (data.length != face.size || !face.sha256.equals(sha256(data))) {
@@ -161,8 +152,8 @@ final class ClusterFont {
         Log.i(TAG, "шрифт приборки сохранён: " + file);
     }
 
-    private static Face face(int font) {
-        Face[] faces = MODEL_CITYRAY.equals(model) ? CITYRAY_FACES : FACES;
+    private static Face face(int font, String vehicle) {
+        Face[] faces = Vehicle.cityray(vehicle) ? CITYRAY_FACES : FACES;
         return font > SYSTEM && font < faces.length ? faces[font] : null;
     }
 

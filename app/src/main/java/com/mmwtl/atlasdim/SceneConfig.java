@@ -1,7 +1,5 @@
 package com.mmwtl.atlasdim;
 
-import android.os.Build;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -9,22 +7,17 @@ import org.json.JSONObject;
 final class SceneConfig {
     static final int WIDTH = 1920;
     static final int HEIGHT = 532;
-    /**
-     * G426_J1 (смежная модель): приборы и фон — одно окно на dpy-2 с z=3, фон под
-     * приборами невозможен; на dpy-1 второе окно ламп с z=9. RESEARCH.md п. 9.
-     */
-    static final boolean SINGLE_LAYER = "G426_J1".equals(Build.MODEL);
-    /** z контрольных ламп EarlyTT на dpy-1: наши окна всегда ниже. */
-    static final int LAMPS_Z = SINGLE_LAYER ? 9 : 10;
     /** z штатного слоя приборов cluster-hmi на dpy-1: фон всегда ниже. */
     static final int CLUSTER_Z = 3;
+    /** Модель ГУ ({@link Vehicle}): раскладка слоёв и шрифты приборки. */
+    final String vehicle;
     // Штатные для наших машин; пароль приходит из local.properties при сборке.
     String host = BuildConfig.QNX_HOST;
     String password = BuildConfig.QNX_PASSWORD;
-    final Layer clock = new Layer(Kind.CLOCK);
-    final Layer fuel = new Layer(Kind.FUEL);
-    final Layer temp = new Layer(Kind.TEMP);
-    final Layer background = new Layer(Kind.BACKGROUND);
+    final Layer clock;
+    final Layer fuel;
+    final Layer temp;
+    final Layer background;
     /** Датчики напрямую через ECarX API, без GInputBridge (эксперимент). */
     boolean directCar;
     /** Без проверок под модель (лампы, слои приборки): только для экспериментов. */
@@ -73,8 +66,22 @@ final class SceneConfig {
 
     enum Kind { CLOCK, FUEL, TEMP, BACKGROUND }
 
+    /**
+     * На Ситирее (G426_J1) приборы и фон — одно окно на dpy-2 с z=3, фон под приборами
+     * невозможен; на dpy-1 второе окно ламп с z=9. RESEARCH.md п. 9.
+     */
+    static boolean singleLayer(String vehicle) {
+        return Vehicle.cityray(vehicle);
+    }
+
+    /** z контрольных ламп EarlyTT на dpy-1: наши окна всегда ниже. */
+    static int lampsZ(String vehicle) {
+        return singleLayer(vehicle) ? 9 : 10;
+    }
+
     static final class Layer {
         final Kind kind;
+        final String vehicle;
         final boolean background;
         boolean enabled;
         int display;
@@ -87,14 +94,20 @@ final class SceneConfig {
         // Умолчания при установке — раскладка, проверенная на ГУ: часы в левом нижнем углу
         // приборов, фон выключен. Место топлива на ГУ ещё не проверено — выключено.
         Layer(Kind kind) {
+            this(kind, Vehicle.current());
+        }
+
+        Layer(Kind kind, String vehicle) {
             this.kind = kind;
+            this.vehicle = vehicle;
             background = kind == Kind.BACKGROUND;
             enabled = kind == Kind.CLOCK;
-            display = background || SINGLE_LAYER ? 2 : 1;
-            int top = SINGLE_LAYER ? CLUSTER_Z + 3 : LAMPS_Z;
+            boolean single = singleLayer(vehicle);
+            display = background || single ? 2 : 1;
+            int top = single ? CLUSTER_Z + 3 : lampsZ(vehicle);
             // Часы на G636 — z=7, под топливом (8); температура — 6 на обеих моделях.
-            int clockZ = SINGLE_LAYER ? top - 1 : top - 3;
-            int tempZ = SINGLE_LAYER ? top : top - 4;
+            int clockZ = single ? top - 1 : top - 3;
+            int tempZ = single ? top : top - 4;
             z = background ? 0 : kind == Kind.CLOCK ? clockZ : kind == Kind.TEMP ? tempZ : top - 2;
             x = kind == Kind.FUEL ? WIDTH - 300 : kind == Kind.TEMP ? 120 : 0;
             y = background ? 0 : 482;
@@ -133,6 +146,9 @@ final class SceneConfig {
                 return;
             }
             String prefix = label() + ": ";
+            boolean single = singleLayer(vehicle);
+            int lamps = lampsZ(vehicle);
+            String model = Vehicle.label(vehicle);
             if (display < 1 || display > 2 || z < -100 || z > 100) {
                 throw new IllegalArgumentException(prefix + "дисплей 1…2, z −100…100");
             }
@@ -143,20 +159,20 @@ final class SceneConfig {
             if (unrestricted) {
                 return;
             }
-            if (display == 1 && z >= LAMPS_Z) {
+            if (display == 1 && z >= lamps) {
                 throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
-                        + LAMPS_Z + " (лампы)");
+                        + lamps + " (лампы)");
             }
-            if (SINGLE_LAYER && display == 1) {
-                throw new IllegalArgumentException(prefix + "на " + Build.MODEL
+            if (single && display == 1) {
+                throw new IllegalArgumentException(prefix + "на " + model
                         + " окно на dpy-1 делает приборку чёрной — только dpy-2");
             }
-            if (SINGLE_LAYER && z <= CLUSTER_Z) {
-                throw new IllegalArgumentException(prefix + "на " + Build.MODEL
+            if (single && z <= CLUSTER_Z) {
+                throw new IllegalArgumentException(prefix + "на " + model
                         + " z > " + CLUSTER_Z + ", иначе окно под штатной приборкой");
             }
-            if (background && SINGLE_LAYER) {
-                throw new IllegalArgumentException("Фон на " + Build.MODEL
+            if (background && single) {
+                throw new IllegalArgumentException("Фон на " + model
                         + " недоступен: приборы и фон штатно рисуются одним слоем");
             }
             if (background && display == 1 && z >= CLUSTER_Z) {
@@ -181,9 +197,19 @@ final class SceneConfig {
     }
 
     SceneConfig() {
+        this(Vehicle.current());
+    }
+
+    SceneConfig(String vehicle) {
+        this.vehicle = Vehicle.valid(vehicle);
+        clock = new Layer(Kind.CLOCK, this.vehicle);
+        fuel = new Layer(Kind.FUEL, this.vehicle);
+        temp = new Layer(Kind.TEMP, this.vehicle);
+        background = new Layer(Kind.BACKGROUND, this.vehicle);
     }
 
     SceneConfig(SceneConfig other) {
+        this(other.vehicle);
         host = other.host;
         password = other.password;
         for (Kind kind : Kind.values()) {
@@ -278,7 +304,7 @@ final class SceneConfig {
     /** Применённая композиция: её же поднимает сервис после загрузки ГУ. */
     String toJson() {
         try {
-            JSONObject json = new JSONObject().put("host", host).put("password", password)
+            JSONObject json = new JSONObject().put("vehicle", vehicle).put("host", host).put("password", password)
                     .put("seconds", seconds).put("plate", plate).put("grid", grid)
                     .put("clockFont", clockFont).put("fuelFont", fuelFont)
                     .put("clockFontFile", clockFontFile).put("fuelFontFile", fuelFontFile)
@@ -305,10 +331,10 @@ final class SceneConfig {
     /** Экран и z, недопустимые для этой модели (старый черновик), — по умолчанию. */
     static void allowPlacement(Layer layer) {
         boolean stale = layer.display < 1 || layer.display > 2
-                || layer.display == 1 && layer.z >= LAMPS_Z
-                || SINGLE_LAYER && (layer.display == 1 || layer.z <= CLUSTER_Z);
+                || layer.display == 1 && layer.z >= lampsZ(layer.vehicle)
+                || singleLayer(layer.vehicle) && (layer.display == 1 || layer.z <= CLUSTER_Z);
         if (stale) {
-            Layer initial = new Layer(layer.kind);
+            Layer initial = new Layer(layer.kind, layer.vehicle);
             layer.display = initial.display;
             layer.z = initial.z;
         }
@@ -316,7 +342,8 @@ final class SceneConfig {
 
     static SceneConfig fromJson(String text) throws JSONException {
         JSONObject json = new JSONObject(text);
-        SceneConfig config = new SceneConfig();
+        // Композиция до выбора модели — по модели, выбранной сейчас (по умолчанию — прошивки).
+        SceneConfig config = new SceneConfig(json.optString("vehicle", Vehicle.current()));
         config.host = json.optString("host", config.host);
         config.password = json.optString("password", config.password);
         config.seconds = json.optBoolean("seconds", config.seconds);
@@ -359,7 +386,7 @@ final class SceneConfig {
         if (config.unrestricted) {
             return config;
         }
-        if (SINGLE_LAYER) {
+        if (singleLayer(config.vehicle)) {
             config.background.enabled = false;
         }
         allowPlacement(config.clock);
