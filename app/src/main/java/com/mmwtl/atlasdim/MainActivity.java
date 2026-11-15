@@ -25,9 +25,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.Spinner;
-import android.widget.ArrayAdapter;
-import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -39,9 +36,11 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -66,6 +65,7 @@ public final class MainActivity extends ScaledActivity {
     private static final int READ_IMAGES = 2;
     private static final int PICK_FONT = 3;
     private static final int READ_FONTS = 4;
+    private static final int PICK_SETTINGS = 5;
     private static final int[] SWATCHES = {0xff10243a, 0xff000000, 0xff1b1f27, 0xff0f2a2a,
             0xff2a1838, 0xff3a1414, 0xff1a2f14, 0xff2b2b2b};
     private static final SceneConfig.Kind[] KINDS = {SceneConfig.Kind.CLOCK,
@@ -79,7 +79,7 @@ public final class MainActivity extends ScaledActivity {
     private boolean ready;
     private boolean syncing;
     private boolean dirty;
-    private SceneConfig previewConfig = new SceneConfig();
+    private SceneConfig previewConfig;
     private ScrollView scroll;
     private View stage;
     private ScenePreview preview;
@@ -95,7 +95,6 @@ public final class MainActivity extends ScaledActivity {
     private TextView sensorSource;
     private TextView backgroundLocked;
     private Button diagButton;
-    private Spinner vehicleModel;
     private TextView diagStatus;
     private LayerEditor clock;
     private LayerEditor fuel;
@@ -136,6 +135,8 @@ public final class MainActivity extends ScaledActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Vehicle.init(this); // До первой композиции: от модели зависят раскладка и шрифты.
+        previewConfig = new SceneConfig();
         Backgrounds.init(this);
         ClusterFont.init(this);
         UserFonts.init(this);
@@ -367,7 +368,8 @@ public final class MainActivity extends ScaledActivity {
     private void buildBackgroundTab(LinearLayout page) {
         SharedPreferences prefs = prefs();
         background = new LayerEditor(page, previewConfig.background);
-        backgroundLocked = hint(getString(R.string.background_single_layer, Build.MODEL));
+        backgroundLocked = hint(getString(R.string.background_single_layer,
+                Vehicle.label(Vehicle.current())));
         ((LinearLayout) background.enabled.getParent()).addView(backgroundLocked, 1);
         lockBackground(prefs.getBoolean(KEY_UNRESTRICTED, false));
         LinearLayout picture = card(page, R.string.background_picture_title);
@@ -418,7 +420,7 @@ public final class MainActivity extends ScaledActivity {
         alphaRow.addView(alphaValue, new LinearLayout.LayoutParams(dp(56), -2));
         picture.addView(alphaRow);
         grid = toggle(picture, R.string.background_grid, prefs.getBoolean("grid", false));
-        if (!SceneConfig.SINGLE_LAYER) {
+        if (!SceneConfig.singleLayer(Vehicle.current())) {
             picture.addView(hint(R.string.background_hint));
         }
     }
@@ -458,27 +460,18 @@ public final class MainActivity extends ScaledActivity {
 
         LinearLayout vehicle = card(page, R.string.vehicle_title);
         vehicle.addView(hint(R.string.vehicle_hint));
-        vehicleModel = new Spinner(this);
-        vehicleModel.setAdapter(new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_dropdown_item,
-                new String[] {"Geely (исходный профиль)", "Geely Cityray (G426_J1)"}));
-        vehicleModel.setSelection(ClusterFont.MODEL_CITYRAY.equals(
-                prefs.getString(ClusterFont.MODEL_PREF, ClusterFont.MODEL_ORIGINAL)) ? 1 : 0);
-        vehicleModel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view,
-                    int position, long id) {
-                ClusterFont.setModel(position == 1
-                        ? ClusterFont.MODEL_CITYRAY : ClusterFont.MODEL_ORIGINAL);
-                if (ready) {
-                    clockFont.paint();
-                    fuelFont.paint();
-                    tempFont.paint();
-                    refreshPreview();
-                }
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) { }
-        });
-        vehicle.addView(vehicleModel);
+        LinearLayout models = new LinearLayout(this);
+        for (String model : Vehicle.ALL) {
+            TextView segment = Ui.segment(this, Vehicle.label(model));
+            Ui.setSegmentSelected(this, segment, model.equals(Vehicle.current()));
+            segment.setOnClickListener(v -> chooseVehicle(model));
+            Ui.addSegment(models, segment);
+        }
+        vehicle.addView(models, margin(10));
+        String detected = Vehicle.detect();
+        vehicle.addView(hint(detected.equals(Vehicle.current())
+                ? getString(R.string.vehicle_detected, Build.MODEL)
+                : getString(R.string.vehicle_mismatch, Build.MODEL, Vehicle.label(detected))));
 
         LinearLayout car = card(page, R.string.sensors_title);
         directCar = toggle(car, R.string.direct_car, prefs.getBoolean(KEY_DIRECT_CAR, false));
@@ -507,6 +500,17 @@ public final class MainActivity extends ScaledActivity {
             refreshPreview();
         });
         limits.addView(hint(R.string.limits_hint));
+
+        LinearLayout backup = card(page, R.string.backup_title);
+        backup.addView(hint(R.string.backup_hint));
+        Button export = Ui.button(this, R.string.backup_export);
+        Ui.topMargin(export, 12);
+        export.setOnClickListener(v -> exportSettings());
+        backup.addView(export);
+        Button importButton = Ui.button(this, R.string.backup_import);
+        Ui.topMargin(importButton, 10);
+        importButton.setOnClickListener(v -> chooseSettings());
+        backup.addView(importButton);
 
         LinearLayout ui = card(page, R.string.interface_title);
         ui.addView(hint(R.string.interface_hint));
@@ -551,6 +555,127 @@ public final class MainActivity extends ScaledActivity {
         Ui.topMargin(donate, 12);
         donate.setOnClickListener(v -> DonateDialog.show(this));
         support.addView(donate);
+    }
+
+    /**
+     * Другая модель ГУ: черновик сохраняется, экран и z слоёв сбрасываются на проверенные
+     * для неё значения, экран строится заново. На приборку уходит по «Показать / применить».
+     */
+    private void chooseVehicle(String model) {
+        if (model.equals(Vehicle.current())) {
+            return;
+        }
+        saveConfig();
+        SharedPreferences.Editor edit = prefs().edit();
+        for (SceneConfig.Kind kind : KINDS) {
+            String key = previewConfig.layer(kind).id() + ".";
+            edit.remove(key + "display").remove(key + "z");
+        }
+        edit.commit();
+        Vehicle.set(this, model);
+        Toast.makeText(this, getString(R.string.vehicle_changed, Vehicle.label(model)),
+                Toast.LENGTH_LONG).show();
+        recreate();
+    }
+
+    // ---- Импорт и экспорт настроек (как в AtlasClimateWidget) ----
+
+    /** Файл в Android/data/…/files/diagnostics рядом с отчётами, через «Поделиться». */
+    private void exportSettings() {
+        saveConfig();
+        File dir = ReportProvider.dir(this);
+        File file = new File(dir, SettingsBackup.PREFIX + new SimpleDateFormat(
+                "yyyyMMdd-HHmmss", Locale.US).format(new Date()) + ".json");
+        try {
+            if (!dir.isDirectory() && !dir.mkdirs()) {
+                throw new IOException("нет папки " + dir);
+            }
+            File[] old = dir.listFiles((d, name) -> name.startsWith(SettingsBackup.PREFIX));
+            if (old != null) {
+                for (File item : old) {
+                    //noinspection ResultOfMethodCallIgnored
+                    item.delete();
+                }
+            }
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                out.write(SettingsBackup.export(prefs(), version())
+                        .getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.w("AtlasDim", "export settings", e);
+            Toast.makeText(this, R.string.backup_export_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+        Uri uri = ReportProvider.uri(file);
+        Intent send = new Intent(Intent.ACTION_SEND)
+                .setType(SettingsBackup.MIME)
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, file.getName())
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        send.setClipData(ClipData.newRawUri(file.getName(), uri));
+        try {
+            startActivity(Intent.createChooser(send, getString(R.string.backup_export)));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.diag_share_none, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** Системный выбор файла, любой тип: JSON из мессенджеров часто приходит без него. */
+    private void chooseSettings() {
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[] {SettingsBackup.MIME,
+                        "application/octet-stream", "text/plain", "*/*"});
+        try {
+            startActivityForResult(picker, PICK_SETTINGS);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.backup_no_picker, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void readSettings(Uri uri) {
+        String text;
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) {
+                throw new IOException("не открывается " + uri);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+                if (out.size() > SettingsBackup.MAX_BYTES) {
+                    throw new IOException("файл больше 256 КБ");
+                }
+            }
+            text = new String(out.toByteArray(), StandardCharsets.UTF_8);
+        } catch (IOException | RuntimeException e) {
+            Log.w("AtlasDim", "import settings " + uri, e);
+            Toast.makeText(this, R.string.backup_import_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+        SettingsBackup backup = SettingsBackup.parse(text);
+        if (backup == null) {
+            Toast.makeText(this, R.string.backup_import_invalid, Toast.LENGTH_LONG).show();
+            return;
+        }
+        String message = getString(R.string.backup_import_summary, backup.size(),
+                Vehicle.label(backup.vehicle));
+        if (!backup.layoutKept()) {
+            message += getString(R.string.backup_import_other_vehicle,
+                    Vehicle.label(Vehicle.current()));
+        }
+        sized(new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.backup_import_title)
+                .setMessage(message)
+                .setPositiveButton(R.string.backup_import_confirm, (d, w) -> {
+                    backup.apply(prefs());
+                    Toast.makeText(this, R.string.backup_import_done, Toast.LENGTH_LONG).show();
+                    recreate();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show());
     }
 
     private void setExpanded(TextView head, View body, String title, boolean expanded) {
@@ -723,7 +848,7 @@ public final class MainActivity extends ScaledActivity {
 
     /** На G426_J1 фон закрывает всю приборку: выключен, пока ограничения не сняты. */
     private void lockBackground(boolean unrestricted) {
-        boolean locked = SceneConfig.SINGLE_LAYER && !unrestricted;
+        boolean locked = SceneConfig.singleLayer(Vehicle.current()) && !unrestricted;
         if (locked) {
             background.enabled.setChecked(false);
         }
@@ -892,8 +1017,6 @@ public final class MainActivity extends ScaledActivity {
 
     private void saveConfig() {
         SharedPreferences.Editor edit = prefs().edit();
-        edit.putString(ClusterFont.MODEL_PREF, vehicleModel.getSelectedItemPosition() == 1
-                ? ClusterFont.MODEL_CITYRAY : ClusterFont.MODEL_ORIGINAL);
         edit.putString("host", host.getText().toString().trim());
         edit.putString("password", password.getText().toString());
         edit.putBoolean(SceneService.KEY_BOOT, boot.isChecked());
@@ -1077,6 +1200,9 @@ public final class MainActivity extends ScaledActivity {
             Uri uri = data.getData();
             importFont(fontTarget, () -> UserFonts.importUri(this, uri));
         }
+        if (code == PICK_SETTINGS && result == RESULT_OK && data != null && data.getData() != null) {
+            readSettings(data.getData());
+        }
     }
 
     private void importImage(Uri uri) {
@@ -1240,7 +1366,7 @@ public final class MainActivity extends ScaledActivity {
                         : getString(R.string.font_user_missing_hint));
             } else {
                 hint.setText(font == ClusterFont.SYSTEM ? R.string.font_system_hint
-                        : ClusterFont.saved(font) ? R.string.font_saved_hint : R.string.font_missing_hint);
+                        : ClusterFont.saved(font, Vehicle.current()) ? R.string.font_saved_hint : R.string.font_missing_hint);
             }
         }
     }
@@ -1401,7 +1527,7 @@ public final class MainActivity extends ScaledActivity {
                 Ui.setSegmentSelected(MainActivity.this, displays[i], display == i + 1);
             }
             paintPlacement(placement.getVisibility() == View.VISIBLE);
-            boolean single = SceneConfig.SINGLE_LAYER;
+            boolean single = SceneConfig.singleLayer(Vehicle.current());
             zHint.setText(display == 2 ? single ? R.string.layer_z_hint_dpy2_single
                             : R.string.layer_z_hint_dpy2
                     : defaults.background ? R.string.layer_z_hint_dpy1_background

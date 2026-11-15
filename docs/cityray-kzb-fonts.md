@@ -21,10 +21,13 @@ Extralight is documented only, not exposed as a fourth built-in choice.
 
 Safety and compatibility:
 - Only read the QNX resource, never modify it.
-- The Cityray profile checks the resource file length before extracting.
-- Checks SHA-256 of each extracted font before caching.
-- Uses distinct cache names for Cityray, preserving original profile files.
-- Existing installations default to the original profile.
+- Checks SHA-256 of each extracted font before caching: another firmware fails the check.
+- Regular and Bold use distinct cache names for Cityray; Switches is byte-identical on
+  both head units and shares one cached file.
+- `dd` reads in 8-byte blocks when offset and size allow it, otherwise in 4-byte blocks
+  (Cityray Bold).
+- The profile is the head-unit model on the System tab (`Vehicle`): it also selects the
+  cluster layer layout (RESEARCH.md п. 9). By default it follows `Build.MODEL`.
 - Other Cityray firmware versions are **not** yet verified.
 - Vehicle-specific selection is currently for font resources only, not an
   assurance that all scene layouts or QNX daemon functions are compatible.

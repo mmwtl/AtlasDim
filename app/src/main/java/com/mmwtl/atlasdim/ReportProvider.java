@@ -13,8 +13,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 
 /**
- * Отдаёт отчёты диагностики другим приложениям для «Поделиться» — только чтение и только
- * файлы из {@link #dir}. Свой минимальный провайдер вместо FileProvider: без androidx.
+ * Отдаёт отчёты диагностики и экспорт настроек другим приложениям для «Поделиться» — только
+ * чтение и только файлы из {@link #dir}. Свой минимальный провайдер вместо FileProvider: без androidx.
  */
 public final class ReportProvider extends ContentProvider {
     static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".reports";
@@ -71,7 +71,8 @@ public final class ReportProvider extends ContentProvider {
 
     @Override
     public String getType(Uri uri) {
-        return "text/plain";
+        String name = uri.getLastPathSegment();
+        return name != null && name.endsWith(".json") ? SettingsBackup.MIME : "text/plain";
     }
 
     @Override
