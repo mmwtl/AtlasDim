@@ -9,7 +9,7 @@ import android.os.Build;
  * может выбрать явно на вкладке «Система».
  */
 final class Vehicle {
-    /** Основная ГУ G636: приборы и фон — два слоя, лампы на dpy-1 с z=10. */
+    /** Atlas, ГУ G636: приборы и фон — два слоя, лампы на dpy-1 с z=10. */
     static final String G636 = "g636";
     /** Ситирей G426_J1: приборы и фон — одно окно на dpy-2 с z=3, лампы с z=9. */
     static final String CITYRAY = "cityray";
@@ -49,6 +49,6 @@ final class Vehicle {
     }
 
     static String label(String value) {
-        return cityray(value) ? "Cityray (G426_J1)" : "G636";
+        return cityray(value) ? "Cityray (G426_J1)" : "Atlas (G636)";
     }
 }
