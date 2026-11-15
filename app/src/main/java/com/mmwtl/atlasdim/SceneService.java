@@ -95,6 +95,7 @@ public final class SceneService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        ClusterFont.init(this);
     }
 
     @Override
