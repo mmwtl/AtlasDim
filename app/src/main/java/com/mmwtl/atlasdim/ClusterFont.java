@@ -139,8 +139,9 @@ final class ClusterFont {
                 throw new IOException("resource.kzb не соответствует проверенной прошивке Cityray");
             }
         }
-        QnxShell.Result r = qnx.exec("for f in " + KZB + "; do dd if=$f bs=8 skip="
-                + face.offset / 8 + " count=" + face.size / 8
+        int blockSize = MODEL_CITYRAY.equals(model) ? 4 : 8;
+        QnxShell.Result r = qnx.exec("for f in " + KZB + "; do dd if=$f bs=" + blockSize + " skip="
+                + face.offset / blockSize + " count=" + face.size / blockSize
                 + " 2>/dev/null | openssl base64; break; done", FETCH_TIMEOUT_MS);
         byte[] data = Base64.decode(r.output.replaceAll("[^A-Za-z0-9+/=]", ""), Base64.DEFAULT);
         if (data.length != face.size || !face.sha256.equals(sha256(data))) {
