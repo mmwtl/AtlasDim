@@ -34,7 +34,7 @@ final class DimDaemon {
     // Больше ~2 КБ за раз терминал QNX теряет часть ввода (копия выходила короче).
     private static final int TELNET_BATCH_LINES = 8;
     private static final long TELNET_BATCH_TIMEOUT_MS = 60000;
-    private static final String KEY_LAUNCHED = "daemons";
+    static final String KEY_LAUNCHED = "daemons";
 
     interface Progress {
         void step(String text);

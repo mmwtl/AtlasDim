@@ -75,6 +75,7 @@ public final class MainActivity extends ScaledActivity {
     private static final int KEEP_REPORTS = 20;
     private static final String KEY_UNRESTRICTED = "unrestricted";
     private static final String KEY_DIRECT_CAR = "directCar";
+    private static final String STATE_DIRTY = "dirty";
     private static final int[] TAB_LABELS = {R.string.tab_clock, R.string.tab_fuel,
             R.string.tab_temp, R.string.tab_background, R.string.tab_system};
     private boolean ready;
@@ -168,9 +169,17 @@ public final class MainActivity extends ScaledActivity {
         rebuildFills();
         showTab(prefs.getInt("tab", 0));
         refreshPreview();
-        dirty = false; // Открытие экрана — не правка; плашку задаст состояние сервиса в onStart.
-        setPill(getString(R.string.pill_idle), Ui.TEXT_SECONDARY);
+        dirty = savedInstanceState != null && savedInstanceState.getBoolean(STATE_DIRTY, false)
+                && SceneService.isActive(this);
+        setPill(getString(dirty ? R.string.pill_dirty : R.string.pill_idle),
+                dirty ? PENDING : Ui.TEXT_SECONDARY);
         Log.i("AtlasDim", "AtlasDim v" + version() + " started");
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(STATE_DIRTY, dirty);
     }
 
     @Override
@@ -574,6 +583,7 @@ public final class MainActivity extends ScaledActivity {
         }
         edit.commit();
         Vehicle.set(this, model);
+        dirty = SceneService.isActive(this);
         Toast.makeText(this, getString(R.string.vehicle_changed, Vehicle.label(model)),
                 Toast.LENGTH_LONG).show();
         recreate();
@@ -672,6 +682,7 @@ public final class MainActivity extends ScaledActivity {
                 .setMessage(message)
                 .setPositiveButton(R.string.backup_import_confirm, (d, w) -> {
                     backup.apply(prefs());
+                    dirty = SceneService.isActive(this);
                     Toast.makeText(this, R.string.backup_import_done, Toast.LENGTH_LONG).show();
                     recreate();
                 })
@@ -1469,15 +1480,21 @@ public final class MainActivity extends ScaledActivity {
             paintPlacement(display != defaults.display || z != defaults.z);
 
             card.addView(label(R.string.layer_geometry));
+            boolean splitCoords = !defaults.background
+                    && getResources().getConfiguration().screenWidthDp < 480;
             LinearLayout row1 = new LinearLayout(MainActivity.this);
             x = cell(row1, "x", "X", "x", defaults.x);
-            y = cell(row1, "y", "Y", "y", defaults.y);
+            LinearLayout yRow = splitCoords ? new LinearLayout(MainActivity.this) : row1;
+            y = cell(yRow, "y", "Y", "y", defaults.y);
             LinearLayout sizeRow = defaults.background ? row1 : new LinearLayout(MainActivity.this);
             w = cell(sizeRow, "Ширина", defaults.background
                     ? getString(R.string.layer_width) : "Ширина", "w", defaults.w);
             h = cell(sizeRow, "Высота", defaults.background
                     ? getString(R.string.layer_height) : "Высота", "h", defaults.h);
             card.addView(row1, margin(6));
+            if (splitCoords) {
+                card.addView(yRow, margin(10));
+            }
             if (!defaults.background) {
                 card.addView(sizeRow, margin(10));
             }

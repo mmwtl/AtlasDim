@@ -159,13 +159,13 @@ final class SceneConfig {
             if (unrestricted) {
                 return;
             }
-            if (display == 1 && z >= lamps) {
-                throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
-                        + lamps + " (лампы)");
-            }
             if (single && display == 1) {
                 throw new IllegalArgumentException(prefix + "на " + model
                         + " окно на dpy-1 делает приборку чёрной — только dpy-2");
+            }
+            if (display == 1 && z >= lamps) {
+                throw new IllegalArgumentException(prefix + "на dpy-1 z должен быть ниже "
+                        + lamps + " (лампы)");
             }
             if (single && z <= CLUSTER_Z) {
                 throw new IllegalArgumentException(prefix + "на " + model

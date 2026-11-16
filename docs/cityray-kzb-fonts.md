@@ -13,10 +13,11 @@ QNX resource path:
 | --- | --- | ---: | --- |
 | Adelle Sans Regular | 0x22B9C | 277648 | 0248c869a38968e4ab0b246fc157e2c5ad88660feee19a6124598363b3a25e86 |
 
-The Cityray menu offers System (ID 0) and “Как на приборной панели” (ID 1,
-Adelle Sans Regular). The earlier GeelyBCTF mapping was superseded by PR #3.
-IDs 2–4 from older settings fall back to System in the editor and renderer.
-Atlas keeps its existing built-in and imported font choices.
+The Cityray menu offers System (ID 0), “Как на приборной панели” (ID 1,
+Adelle Sans Regular), and custom user fonts (ID 4, «Свой»). The earlier GeelyBCTF
+mapping was superseded by PR #3. IDs 2–3 from older settings fall back to System
+in the editor and renderer. Atlas keeps its existing built-in and imported font
+choices.
 
 Safety and compatibility:
 - Only read the QNX resource, never modify it.

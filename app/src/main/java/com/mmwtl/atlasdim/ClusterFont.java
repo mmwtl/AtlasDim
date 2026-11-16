@@ -53,15 +53,11 @@ final class ClusterFont {
         }
     }
 
-    /** GeelyBCTF Switches для Atlas. */
-    private static final String SWITCHES = "GeelyBCTF-Switches.ttf";
-    private static final String SWITCHES_SHA256 =
-            "f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d";
-
     private static final Face[] FACES = {null,
             new Face("GeelyBCTF-Regular.ttf", 0x6918b20, 490032,
                     "50c7cbf722e910fa34486e27bec8e212f2e5ee29f9564148d22019522547f755"),
-            new Face(SWITCHES, 0x6990558, 82312, SWITCHES_SHA256),
+            new Face("GeelyBCTF-Switches.ttf", 0x6990558, 82312,
+                    "f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d"),
             new Face("GeelyBCTF-Bold.ttf", 0x68935f0, 463544,
                     "f7165f21b904d704971376560d364c11f0e8824242a2854ab34542f3fa9a27f8")};
 
@@ -122,7 +118,7 @@ final class ClusterFont {
     }
 
     static boolean allowed(int font, String vehicle) {
-        return !Vehicle.cityray(vehicle) || font == SYSTEM || font == REGULAR;
+        return !Vehicle.cityray(vehicle) || font == SYSTEM || font == REGULAR || font == USER;
     }
 
     private static void fetch(QnxShell qnx, int font, String vehicle) throws IOException {
