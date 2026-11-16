@@ -60,3 +60,12 @@ Validation on Android 11 / API 30 ARM64 AVD `atlashu`, emulator-5554,
   exposes none. Clock screenshot visually reviewed for layout and clipping.
 - No connection to QNX or attempt to apply a scene. Font appearance on the
   real cluster remains unverified by this emulator check.
+
+### Vector arrow polish
+
+Replaced font glyphs with a 24 dp vector arrow with rounded strokes, rotated
+for each direction inside centered 48 dp ImageButtons. Retained content
+descriptions and existing click handlers for all non-background panels.
+`:app:assembleDebug :app:lintDebug` passed. On the same emulator, measured
+bright-icon bounds in a fresh screenshot against UIAutomator button bounds:
+all four icon centers exactly matched their button centers in both axes.
