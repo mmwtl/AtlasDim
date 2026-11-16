@@ -1,33 +1,36 @@
-# Geely Cityray (G426_J1) Kanzi fonts
+# Geely Cityray (G426_J1) cluster font
 
-Source: user-provided backup of the Cityray instrument-cluster resource file,
-verified offline (60,536,188 bytes). Do not commit the proprietary KZB or fonts.
+Source: [PR #3](https://github.com/mmwtl/AtlasDim/pull/3), commit
+`0b6fc4cd66e04e7a3afb2055a9bc81e2054ba085`. Its author reports an offline
+extraction from a user-provided 60,536,188-byte KZB backup and a visual match
+on a real Cityray. This integration has not repeated the extraction or vehicle check.
+Do not commit the proprietary KZB or fonts.
 
 QNX resource path:
 `/apps/cluster/FX11_HEV/bin/hmi/GLY_FS11-A2J1/ClusterHMI/resource.kzb`
 
-The original AtlasDim wildcard remains valid:
-`/apps/cluster/*/bin/hmi/*/ClusterHMI/resource.kzb`.
-
 | Typeface | Offset (hex) | Length | SHA-256 |
 | --- | --- | ---: | --- |
-| GeelyBCTF-Regular.ttf | 0x3992620 | 83288 | 5c9b8ed5763106dffaa65a0264e8fe98351be75604403520a81eaf544ff05db2 |
-| GeelyBCTF-Switches.ttf | 0x39A6B80 | 82312 | f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d |
-| GeelyBCTF-Bold.ttf | 0x396AA1C | 80268 | 0a59701719059ee8b42684b2067611872456fda438d7155cb56b13da5ee3ac27 |
-| GeelyBCTF-Extralight.ttf | 0x397E3B0 | 82536 | 403b569420679f3dd41e32434cb679d80e29ab1b3fa54c73c5f943eb1d2a6365 |
+| Adelle Sans Regular | 0x22B9C | 277648 | 0248c869a38968e4ab0b246fc157e2c5ad88660feee19a6124598363b3a25e86 |
 
-Regular, Switches and Bold are mapped to existing font choices.
-Extralight is documented only, not exposed as a fourth built-in choice.
+The Cityray menu offers System (ID 0) and “Как на приборной панели” (ID 1,
+Adelle Sans Regular). The earlier GeelyBCTF mapping was superseded by PR #3.
+IDs 2–4 from older settings fall back to System in the editor and renderer.
+Atlas keeps its existing built-in and imported font choices.
 
 Safety and compatibility:
 - Only read the QNX resource, never modify it.
-- Checks SHA-256 of each extracted font before caching: another firmware fails the check.
-- Regular and Bold use distinct cache names for Cityray; Switches is byte-identical on
-  both head units and shares one cached file.
-- `dd` reads in 8-byte blocks when offset and size allow it, otherwise in 4-byte blocks
-  (Cityray Bold).
-- The profile is the head-unit model on the System tab (`Vehicle`): it also selects the
-  cluster layer layout (RESEARCH.md п. 9). By default it follows `Build.MODEL`.
-- Other Cityray firmware versions are **not** yet verified.
-- Vehicle-specific selection is currently for font resources only, not an
-  assurance that all scene layouts or QNX daemon functions are compatible.
+- Use the exact Cityray resource path; Atlas retains its original wildcard.
+- Verify extracted font length and SHA-256 before caching. As in the profiles
+  branch, do not gate on the enclosing KZB size: the font bytes are checked directly.
+- Use a distinct `Cityray-AdelleSans-Regular.ttf` cache filename, so the earlier
+  GeelyBCTF cache cannot be reused accidentally.
+- `dd` uses 4-byte blocks for this font: its offset is not divisible by 8.
+- Choose font resources from the scene's saved `vehicle`, rather than mutable
+  global model state. The editor uses the currently selected vehicle profile.
+- Other Cityray firmware versions are unverified; a matching font is not proof
+  that scene layouts or QNX daemon behavior are compatible.
+
+Clock, fuel and temperature editors also have four arrow buttons, one scene pixel
+per tap, clamped to the panel bounds. Dragging and resizing retain their 4-pixel
+snap; background geometry and placement presets retain their existing behavior.

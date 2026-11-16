@@ -8,7 +8,7 @@
     <string name="tab_background">Фон</string>
     <string name="tab_system">Система</string>
     <string name="vehicle_title">Модель ГУ</string>
-    <string name="vehicle_hint">От модели зависят раскладка слоёв приборки (экран, z, доступность фона) и шрифты GeelyBCTF из resource.kzb. При смене модели экран и z слоёв сбрасываются на проверенные для неё; на приборку изменения уходят по «Показать / применить».</string>
+    <string name="vehicle_hint">От модели зависят раскладка слоёв приборки (экран, z, доступность фона) и штатные шрифты (Atlas — GeelyBCTF, Cityray — Adelle Sans Regular). При смене модели экран и z слоёв сбрасываются на проверенные для неё; на приборку изменения уходят по «Показать / применить».</string>
     <string name="vehicle_detected">Совпадает с прошивкой (%1$s).</string>
     <string name="vehicle_mismatch">Прошивка — %1$s, по ней подходит %2$s. Чужая раскладка может сделать приборку чёрной — тогда «Убрать всё».</string>
     <string name="vehicle_changed">Модель ГУ: %1$s. Экран и z слоёв — по умолчанию.</string>
@@ -66,6 +66,8 @@
     <string name="place_center">По центру</string>
     <string name="place_top_right">Справа вверху</string>
     <string name="place_reset">Сброс</string>
+    <string name="layer_nudge_title">Точная настройка положения</string>
+    <string name="layer_nudge_step">1 px</string>
 
     <string name="clock_look_title">Вид часов</string>
     <string name="clock_seconds">Показывать секунды</string>
@@ -73,6 +75,9 @@
     <string name="font_title">Шрифт</string>
     <string name="font_system">Системный</string>
     <string name="font_regular">Тонкий</string>
+    <string name="font_cityray_panel">Как на приборной панели</string>
+    <string name="font_cityray_saved_hint">Adelle Sans Regular · штатный шрифт Cityray. Загружен из ресурсов приборки.</string>
+    <string name="font_cityray_missing_hint">Adelle Sans Regular · будет извлечён из resource.kzb QNX при «Показать / применить». До этого отображается системный шрифт.</string>
     <string name="font_medium">Средний</string>
     <string name="font_bold">Жирный</string>
     <string name="font_system_hint">Системный шрифт Android.</string>
