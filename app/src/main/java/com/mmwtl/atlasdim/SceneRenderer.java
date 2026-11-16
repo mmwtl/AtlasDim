@@ -118,6 +118,9 @@ final class SceneRenderer {
         }
         paint.setColor(Color.WHITE);
         int font = isFuel ? config.fuelFont : isTemp ? config.tempFont : config.clockFont;
+        if (!ClusterFont.allowed(font, config.vehicle)) {
+            font = ClusterFont.SYSTEM;
+        }
         Typeface cluster = font == ClusterFont.USER
                 ? UserFonts.typeface(isFuel ? config.fuelFontFile
                         : isTemp ? config.tempFontFile : config.clockFontFile)
