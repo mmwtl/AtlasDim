@@ -1,30 +1,64 @@
-# Geely Cityray (G426_J1) Kanzi fonts
+# Geely Cityray (G426_J1) – verified instrument-cluster font
 
-Source: user-provided backup of the Cityray instrument-cluster resource file,
-verified offline (60,536,188 bytes). Do not commit the proprietary KZB or fonts.
+Source: user-provided original Cityray Kanzi `resource.kzb` backup
+(60,536,188 bytes), tested on the actual Cityray instrument cluster.
+**Do not commit or redistribute the proprietary KZB or the extracted font.**
 
-QNX resource path:
-`/apps/cluster/FX11_HEV/bin/hmi/GLY_FS11-A2J1/ClusterHMI/resource.kzb`
+QNX path (verified on Cityray G426_J1):
 
-The original AtlasDim wildcard remains valid:
-`/apps/cluster/*/bin/hmi/*/ClusterHMI/resource.kzb`.
+```text
+/apps/cluster/FX11_HEV/bin/hmi/GLY_FS11-A2J1/ClusterHMI/resource.kzb
+```
 
-| Typeface | Offset (hex) | Length | SHA-256 |
-| --- | --- | ---: | --- |
-| GeelyBCTF-Regular.ttf | 0x3992620 | 83288 | 5c9b8ed5763106dffaa65a0264e8fe98351be75604403520a81eaf544ff05db2 |
-| GeelyBCTF-Switches.ttf | 0x39A6B80 | 82312 | f73a22cf07912c7399749aa683fffd0da12d3e54a9e2840a5284de56496c2f1d |
-| GeelyBCTF-Bold.ttf | 0x396AA1C | 80268 | 0a59701719059ee8b42684b2067611872456fda438d7155cb56b13da5ee3ac27 |
-| GeelyBCTF-Extralight.ttf | 0x397E3B0 | 82536 | 403b569420679f3dd41e32434cb679d80e29ab1b3fa54c73c5f943eb1d2a6365 |
+Only **two built-in choices** are exposed in the Cityray profile for Clock,
+Fuel and Temperature: **Android system** (font ID `0`) and
+**"Как на приборной панели"** (font ID `1`, Adelle Sans Regular).
+Older GeelyBCTF and user-font choices remain available in the original Geely
+profile, but they are hidden and not rendered in the Cityray profile.
 
-Regular, Switches and Bold are mapped to existing font choices.
-Extralight is documented only, not exposed as a fourth built-in choice.
+## Confirmed Adelle Sans Regular asset
 
-Safety and compatibility:
-- Only read the QNX resource, never modify it.
-- The Cityray profile checks the resource file length before extracting.
-- Checks SHA-256 of each extracted font before caching.
-- Uses distinct cache names for Cityray, preserving original profile files.
-- Existing installations default to the original profile.
-- Other Cityray firmware versions are **not** yet verified.
-- Vehicle-specific selection is currently for font resources only, not an
-  assurance that all scene layouts or QNX daemon functions are compatible.
+| Item | Value |
+| --- | --- |
+| File in Kanzi resources | `AdelleSans-Regular.ttf` |
+| SFNT offset | `0x22B9C` / decimal `142236` |
+| Byte length | `277648` |
+| SHA-256 | `0248c869a38968e4ab0b246fc157e2c5ad88660feee19a6124598363b3a25e86` |
+| Verified KZB length | `60536188` |
+| Android cache name | `Cityray-AdelleSans-Regular.ttf` |
+
+The selected-font workflow reuses `ClusterFont.fetch(QnxShell, SceneConfig)`,
+triggered by the existing "Показать / применить" action. This is a read-only
+operation on the QNX source. The known offset and byte length are multiples
+of **4**, not 8; using `dd bs=4 skip=35559 count=69412` reads exactly the
+font. `openssl base64` transfers data over the already-established Telnet
+shell, Android verifies size and SHA-256, then stores the bytes in app-private
+storage and loads them with `Typeface.createFromFile`. On subsequent
+applications the cached font is reused. Until extraction, the preview falls
+back to the Android system font.
+
+The exact KZB file size and extracted font SHA-256 are checked for this firmware.
+Other Cityray firmware resources have not been verified.
+
+## 1-pixel positioning controls
+
+Each Clock, Fuel and Temperature `LayerEditor` has an additional d-pad
+below the **existing** coordinates and quick-position presets. Each tap changes
+only `x` or `y` by one *cluster coordinate pixel* (`SceneConfig.WIDTH=1920`,
+`HEIGHT=532`), subject to `0 <= x <= WIDTH-w` and
+`0 <= y <= HEIGHT-h`. It updates the existing text fields and preview and
+uses the original Save/Apply mechanism. This intentionally bypasses the
+preview's existing **4-pixel drag snapping**; dragging, resizing, presets,
+display / z and background positioning are left as they were.
+
+Suggested offline regression checks:
+1. Original Geely model still offers the five font choices and original offsets.
+2. Cityray shows precisely two choices per panel; switching from a legacy
+   selection reverts it to System before applying.
+3. The three sets of arrows move their own panel only; width and height do
+   not change. Coordinates are bounded by the 1920 x 532 scene.
+4. Every one-pixel change is visible in numeric fields and the preview,
+   then persists with the existing "Показать / применить" action.
+5. Changing the model cannot enable other fonts for Cityray in the renderer.
+6. On a compatible parked/test vehicle, verify the extracted Adelle resource
+   and ensure vital instrument and warning indications remain unobstructed.

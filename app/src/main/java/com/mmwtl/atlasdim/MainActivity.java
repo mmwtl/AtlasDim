@@ -1232,12 +1232,24 @@ public final class MainActivity extends ScaledActivity {
         }
 
         void paint() {
+            boolean cityray = ClusterFont.isCityray();
+            if (!ClusterFont.allowedForCurrentModel(font)) {
+                font = ClusterFont.SYSTEM;
+                file = "";
+            }
+            segments[ClusterFont.REGULAR].setText(cityray
+                    ? R.string.font_cityray_panel : R.string.font_regular);
             for (int i = 0; i < segments.length; i++) {
+                segments[i].setVisibility(!cityray || ClusterFont.allowedForCurrentModel(i)
+                        ? View.VISIBLE : View.GONE);
                 Ui.setSegmentSelected(MainActivity.this, segments[i], i == font);
             }
             if (font == ClusterFont.USER) {
                 hint.setText(UserFonts.exists(file) ? getString(R.string.font_user_hint, file)
                         : getString(R.string.font_user_missing_hint));
+            } else if (cityray && font == ClusterFont.REGULAR) {
+                hint.setText(ClusterFont.saved(font) ? R.string.font_cityray_saved_hint
+                        : R.string.font_cityray_missing_hint);
             } else {
                 hint.setText(font == ClusterFont.SYSTEM ? R.string.font_system_hint
                         : ClusterFont.saved(font) ? R.string.font_saved_hint : R.string.font_missing_hint);
@@ -1351,6 +1363,58 @@ public final class MainActivity extends ScaledActivity {
             }
             Ui.addSegment(quick, chip(R.string.place_reset, this::reset));
             card.addView(quick, margin(10));
+
+            // Independent 1 px nudging: does not alter drag snapping or presets.
+            // The background layer keeps its existing geometry controls only.
+            if (!defaults.background) {
+                card.addView(label(R.string.layer_nudge_title));
+                LinearLayout nudge = column();
+                LinearLayout top = new LinearLayout(MainActivity.this);
+                top.setGravity(Gravity.CENTER);
+                top.addView(nudgeButton("↑", 0, -1));
+                nudge.addView(top);
+
+                LinearLayout middle = new LinearLayout(MainActivity.this);
+                middle.setGravity(Gravity.CENTER);
+                middle.addView(nudgeButton("←", -1, 0));
+                TextView step = Ui.text(MainActivity.this, R.string.layer_nudge_step,
+                        14, Ui.TEXT_SECONDARY);
+                step.setGravity(Gravity.CENTER);
+                middle.addView(step, new LinearLayout.LayoutParams(dp(76), dp(46)));
+                middle.addView(nudgeButton("→", 1, 0));
+                nudge.addView(middle, margin(4));
+
+                LinearLayout bottom = new LinearLayout(MainActivity.this);
+                bottom.setGravity(Gravity.CENTER);
+                bottom.addView(nudgeButton("↓", 0, 1));
+                nudge.addView(bottom, margin(4));
+                card.addView(nudge, margin(8));
+            }
+        }
+
+        private Button nudgeButton(String symbol, int dx, int dy) {
+            Button button = Ui.button(MainActivity.this, symbol);
+            button.setTextSize(22);
+            button.setPadding(0, 0, 0, 0);
+            button.setContentDescription(defaults.label() + ": сдвиг "
+                    + (dx < 0 ? "влево" : dx > 0 ? "вправо"
+                    : dy < 0 ? "вверх" : "вниз") + " на 1 пиксель");
+            button.setLayoutParams(new LinearLayout.LayoutParams(dp(54), dp(46)));
+            button.setOnClickListener(v -> nudge(dx, dy));
+            return button;
+        }
+
+        private void nudge(int dx, int dy) {
+            int maxX = Math.max(0, SceneConfig.WIDTH - Math.max(1, num(w)));
+            int maxY = Math.max(0, SceneConfig.HEIGHT - Math.max(1, num(h)));
+            int nextX = Math.max(0, Math.min(maxX, num(x) + dx));
+            int nextY = Math.max(0, Math.min(maxY, num(y) + dy));
+            if (nextX == num(x) && nextY == num(y)) return;
+            syncing = true;
+            x.setText(String.valueOf(nextX));
+            y.setText(String.valueOf(nextY));
+            syncing = false;
+            refreshPreview();
         }
 
         /** Экран, z и геометрия — как при установке; включённость не меняется. */
