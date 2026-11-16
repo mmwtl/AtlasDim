@@ -29,6 +29,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -1500,9 +1501,13 @@ public final class MainActivity extends ScaledActivity {
             }
         }
 
-        private Button nudgeButton(String symbol, int dx, int dy) {
-            Button button = Ui.button(MainActivity.this, symbol);
-            button.setTextSize(22);
+        private ImageButton nudgeButton(int dx, int dy) {
+            ImageButton button = new ImageButton(MainActivity.this);
+            button.setImageResource(R.drawable.ic_position_arrow);
+            button.setColorFilter(Ui.TEXT);
+            button.setScaleType(ImageView.ScaleType.CENTER);
+            button.setRotation(dx < 0 ? 180 : dy < 0 ? 270 : dy > 0 ? 90 : 0);
+            button.setBackground(Ui.rounded(Ui.SURFACE_RAISED, dp(8)));
             button.setPadding(0, 0, 0, 0);
             button.setContentDescription(defaults.label() + ": сдвиг "
                     + (dx < 0 ? "влево" : dx > 0 ? "вправо"
@@ -1607,14 +1612,12 @@ public final class MainActivity extends ScaledActivity {
                 boolean horizontal = "x".equals(name);
                 LinearLayout controls = new LinearLayout(MainActivity.this);
                 controls.setGravity(Gravity.CENTER_VERTICAL);
-                controls.addView(nudgeButton(horizontal ? "←" : "↑",
-                        horizontal ? -1 : 0, horizontal ? 0 : -1));
+                controls.addView(nudgeButton(horizontal ? -1 : 0, horizontal ? 0 : -1));
                 LinearLayout.LayoutParams fieldParams = new LinearLayout.LayoutParams(0, -2, 1);
                 fieldParams.setMargins(dp(4), 0, dp(4), 0);
                 edit.setGravity(Gravity.CENTER);
                 controls.addView(edit, fieldParams);
-                controls.addView(nudgeButton(horizontal ? "→" : "↓",
-                        horizontal ? 1 : 0, horizontal ? 0 : 1));
+                controls.addView(nudgeButton(horizontal ? 1 : 0, horizontal ? 0 : 1));
                 box.addView(controls, margin(4));
             } else {
                 box.addView(edit, margin(4));
