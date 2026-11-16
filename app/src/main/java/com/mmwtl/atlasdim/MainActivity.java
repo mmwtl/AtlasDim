@@ -1471,9 +1471,15 @@ public final class MainActivity extends ScaledActivity {
             LinearLayout row1 = new LinearLayout(MainActivity.this);
             x = cell(row1, "x", "X", "x", defaults.x);
             y = cell(row1, "y", "Y", "y", defaults.y);
-            w = cell(row1, "Ширина", getString(R.string.layer_width), "w", defaults.w);
-            h = cell(row1, "Высота", getString(R.string.layer_height), "h", defaults.h);
+            LinearLayout sizeRow = defaults.background ? row1 : new LinearLayout(MainActivity.this);
+            w = cell(sizeRow, "Ширина", defaults.background
+                    ? getString(R.string.layer_width) : "Ширина", "w", defaults.w);
+            h = cell(sizeRow, "Высота", defaults.background
+                    ? getString(R.string.layer_height) : "Высота", "h", defaults.h);
             card.addView(row1, margin(6));
+            if (!defaults.background) {
+                card.addView(sizeRow, margin(10));
+            }
 
             LinearLayout quick = new LinearLayout(MainActivity.this);
             if (defaults.background) {
@@ -1489,30 +1495,8 @@ public final class MainActivity extends ScaledActivity {
             }
             Ui.addSegment(quick, chip(R.string.place_reset, this::reset));
             card.addView(quick, margin(10));
-            // Сдвиг на 1 px отдельно от привязки перетаскивания и готовых положений.
             if (!defaults.background) {
-                card.addView(label(R.string.layer_nudge_title));
-                LinearLayout nudge = column();
-                LinearLayout top = new LinearLayout(MainActivity.this);
-                top.setGravity(Gravity.CENTER);
-                top.addView(nudgeButton("↑", 0, -1));
-                nudge.addView(top);
-
-                LinearLayout middle = new LinearLayout(MainActivity.this);
-                middle.setGravity(Gravity.CENTER);
-                middle.addView(nudgeButton("←", -1, 0));
-                TextView step = Ui.text(MainActivity.this, R.string.layer_nudge_step,
-                        14, Ui.TEXT_SECONDARY);
-                step.setGravity(Gravity.CENTER);
-                middle.addView(step, new LinearLayout.LayoutParams(dp(76), dp(46)));
-                middle.addView(nudgeButton("→", 1, 0));
-                nudge.addView(middle, margin(4));
-
-                LinearLayout bottom = new LinearLayout(MainActivity.this);
-                bottom.setGravity(Gravity.CENTER);
-                bottom.addView(nudgeButton("↓", 0, 1));
-                nudge.addView(bottom, margin(4));
-                card.addView(nudge, margin(8));
+                card.addView(hint(R.string.layer_nudge_step));
             }
         }
 
@@ -1523,7 +1507,7 @@ public final class MainActivity extends ScaledActivity {
             button.setContentDescription(defaults.label() + ": сдвиг "
                     + (dx < 0 ? "влево" : dx > 0 ? "вправо"
                     : dy < 0 ? "вверх" : "вниз") + " на 1 пиксель");
-            button.setLayoutParams(new LinearLayout.LayoutParams(dp(54), dp(46)));
+            button.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
             button.setOnClickListener(v -> nudge(dx, dy));
             return button;
         }
@@ -1619,7 +1603,22 @@ public final class MainActivity extends ScaledActivity {
             box.addView(Ui.text(MainActivity.this, title, 12, Ui.TEXT_SECONDARY));
             EditText edit = new EditText(MainActivity.this);
             styleField(edit, description, prefs().getString(key + name, String.valueOf(value)), NUMBER);
-            box.addView(edit, margin(4));
+            if (!defaults.background && ("x".equals(name) || "y".equals(name))) {
+                boolean horizontal = "x".equals(name);
+                LinearLayout controls = new LinearLayout(MainActivity.this);
+                controls.setGravity(Gravity.CENTER_VERTICAL);
+                controls.addView(nudgeButton(horizontal ? "←" : "↑",
+                        horizontal ? -1 : 0, horizontal ? 0 : -1));
+                LinearLayout.LayoutParams fieldParams = new LinearLayout.LayoutParams(0, -2, 1);
+                fieldParams.setMargins(dp(4), 0, dp(4), 0);
+                edit.setGravity(Gravity.CENTER);
+                controls.addView(edit, fieldParams);
+                controls.addView(nudgeButton(horizontal ? "→" : "↓",
+                        horizontal ? 1 : 0, horizontal ? 0 : 1));
+                box.addView(controls, margin(4));
+            } else {
+                box.addView(edit, margin(4));
+            }
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
             if (row.getChildCount() > 0) {
                 lp.leftMargin = dp(8);

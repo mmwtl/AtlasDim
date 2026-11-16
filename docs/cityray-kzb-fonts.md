@@ -31,6 +31,6 @@ Safety and compatibility:
 - Other Cityray firmware versions are unverified; a matching font is not proof
   that scene layouts or QNX daemon behavior are compatible.
 
-Clock, fuel and temperature editors also have four arrow buttons, one scene pixel
-per tap, clamped to the panel bounds. Dragging and resizing retain their 4-pixel
+Clock, fuel and temperature editors also have arrow buttons beside X and Y,
+one scene pixel per tap, clamped to the panel bounds. Dragging and resizing retain their 4-pixel
 snap; background geometry and placement presets retain their existing behavior.

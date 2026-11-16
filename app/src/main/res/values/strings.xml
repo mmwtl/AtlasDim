@@ -66,8 +66,7 @@
     <string name="place_center">По центру</string>
     <string name="place_top_right">Справа вверху</string>
     <string name="place_reset">Сброс</string>
-    <string name="layer_nudge_title">Точная настройка положения</string>
-    <string name="layer_nudge_step">1 px</string>
+    <string name="layer_nudge_step">Одно нажатие — 1 px</string>
 
     <string name="clock_look_title">Вид часов</string>
     <string name="clock_seconds">Показывать секунды</string>

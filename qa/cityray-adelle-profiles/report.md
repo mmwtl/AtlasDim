@@ -41,3 +41,22 @@ save/reopen and apply; profile switching and settings import with older font IDs
 Check Atlas retains its built-in and imported font choices. Build/lint and the
 source PR author's vehicle report do not establish this integrated APK's behavior
 on OneOS/QNX. No font binary or proprietary resource was added to the repository.
+
+## Inline coordinate controls follow-up
+
+Replaced the separate arrow cross with buttons beside X and Y, as selected by
+the user. Width and height occupy a second row; background retains its original
+four-field row. Arrow touch targets are 48 × 48 dp before app UI scaling.
+
+Validation on Android 11 / API 30 ARM64 AVD `atlashu`, emulator-5554,
+1440 × 1920, density 160, app UI scale 1.5, Cityray profile, debug APK:
+
+- `:app:assembleDebug :app:lintDebug`: passed.
+- Actual UI taps: right X 188 → 189; left X 189 → 188;
+  up Y 164 → 163; down Y 163 → 164. Each tap preserved the other coordinate
+  and width/height (464 × 212).
+- After the right tap, force-stop and relaunch restored X=189 and Y=164.
+- Fuel and temperature tabs each expose four coordinate arrows; background
+  exposes none. Clock screenshot visually reviewed for layout and clipping.
+- No connection to QNX or attempt to apply a scene. Font appearance on the
+  real cluster remains unverified by this emulator check.
