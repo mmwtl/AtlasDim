@@ -25,8 +25,8 @@ final class SettingsBackup {
     static final String PREFIX = "atlasdim-settings-";
     static final int MAX_BYTES = 256 * 1024;
     private static final Set<String> LOCAL = new HashSet<>(Arrays.asList(
-            SceneService.KEY_SCENE, SceneService.KEY_ACTIVE, "password", Vehicle.KEY,
-            "unrestricted", "tab"));
+            SceneService.KEY_SCENE, SceneService.KEY_ACTIVE, DimDaemon.KEY_LAUNCHED,
+            "password", Vehicle.KEY, "unrestricted", "tab"));
     private static final String[] LAYERS = {"clock", "fuel", "temp", "background"};
 
     /** Модель ГУ, с которой сделан файл: раскладка слоёв переносится только на такую же. */
