@@ -1342,12 +1342,34 @@ public final class MainActivity extends ScaledActivity {
             paintPlacement(display != defaults.display || z != defaults.z);
 
             card.addView(label(R.string.layer_geometry));
+            // Precise arrows sit to the right of the existing X/Y/W/H fields.
+            // On narrow layouts keep the arrows on the right, but wrap fields
+            // into two rows so four numeric inputs remain comfortably legible.
+            LinearLayout geometryRow = new LinearLayout(MainActivity.this);
+            geometryRow.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout fieldRows = column();
             LinearLayout row1 = new LinearLayout(MainActivity.this);
             x = cell(row1, "x", "X", "x", defaults.x);
             y = cell(row1, "y", "Y", "y", defaults.y);
-            w = cell(row1, "Ширина", getString(R.string.layer_width), "w", defaults.w);
-            h = cell(row1, "Высота", getString(R.string.layer_height), "h", defaults.h);
-            card.addView(row1, margin(6));
+            boolean compact = getResources().getConfiguration().screenWidthDp < 600;
+            if (compact && !defaults.background) {
+                fieldRows.addView(row1);
+                LinearLayout row2 = new LinearLayout(MainActivity.this);
+                w = cell(row2, "Ширина", getString(R.string.layer_width), "w", defaults.w);
+                h = cell(row2, "Высота", getString(R.string.layer_height), "h", defaults.h);
+                fieldRows.addView(row2, margin(4));
+            } else {
+                w = cell(row1, "Ширина", getString(R.string.layer_width), "w", defaults.w);
+                h = cell(row1, "Высота", getString(R.string.layer_height), "h", defaults.h);
+                fieldRows.addView(row1);
+            }
+            geometryRow.addView(fieldRows, new LinearLayout.LayoutParams(0, -2, 1));
+            if (!defaults.background) {
+                LinearLayout.LayoutParams arrowsParams = new LinearLayout.LayoutParams(-2, -2);
+                arrowsParams.leftMargin = dp(12);
+                geometryRow.addView(positionArrows(), arrowsParams);
+            }
+            card.addView(geometryRow, margin(6));
 
             LinearLayout quick = new LinearLayout(MainActivity.this);
             if (defaults.background) {
@@ -1364,32 +1386,34 @@ public final class MainActivity extends ScaledActivity {
             Ui.addSegment(quick, chip(R.string.place_reset, this::reset));
             card.addView(quick, margin(10));
 
-            // Independent 1 px nudging: does not alter drag snapping or presets.
-            // The background layer keeps its existing geometry controls only.
-            if (!defaults.background) {
-                card.addView(label(R.string.layer_nudge_title));
-                LinearLayout nudge = column();
-                LinearLayout top = new LinearLayout(MainActivity.this);
-                top.setGravity(Gravity.CENTER);
-                top.addView(nudgeButton("↑", 0, -1));
-                nudge.addView(top);
+        }
 
-                LinearLayout middle = new LinearLayout(MainActivity.this);
-                middle.setGravity(Gravity.CENTER);
-                middle.addView(nudgeButton("←", -1, 0));
-                TextView step = Ui.text(MainActivity.this, R.string.layer_nudge_step,
-                        14, Ui.TEXT_SECONDARY);
-                step.setGravity(Gravity.CENTER);
-                middle.addView(step, new LinearLayout.LayoutParams(dp(76), dp(46)));
-                middle.addView(nudgeButton("→", 1, 0));
-                nudge.addView(middle, margin(4));
+        /**
+         * Independent 1 px D-pad beside position fields, not below presets.
+         * Does not affect the preview drag's original 4 px snapping.
+         */
+        private LinearLayout positionArrows() {
+            LinearLayout pad = column();
+            LinearLayout up = new LinearLayout(MainActivity.this);
+            up.setGravity(Gravity.CENTER);
+            up.addView(nudgeButton("↑", 0, -1));
+            pad.addView(up);
 
-                LinearLayout bottom = new LinearLayout(MainActivity.this);
-                bottom.setGravity(Gravity.CENTER);
-                bottom.addView(nudgeButton("↓", 0, 1));
-                nudge.addView(bottom, margin(4));
-                card.addView(nudge, margin(8));
-            }
+            LinearLayout middle = new LinearLayout(MainActivity.this);
+            middle.setGravity(Gravity.CENTER);
+            middle.addView(nudgeButton("←", -1, 0));
+            TextView step = Ui.text(MainActivity.this, R.string.layer_nudge_step,
+                    13, Ui.TEXT_SECONDARY);
+            step.setGravity(Gravity.CENTER);
+            middle.addView(step, new LinearLayout.LayoutParams(dp(44), dp(38)));
+            middle.addView(nudgeButton("→", 1, 0));
+            pad.addView(middle, margin(2));
+
+            LinearLayout down = new LinearLayout(MainActivity.this);
+            down.setGravity(Gravity.CENTER);
+            down.addView(nudgeButton("↓", 0, 1));
+            pad.addView(down, margin(2));
+            return pad;
         }
 
         private Button nudgeButton(String symbol, int dx, int dy) {
@@ -1399,7 +1423,7 @@ public final class MainActivity extends ScaledActivity {
             button.setContentDescription(defaults.label() + ": сдвиг "
                     + (dx < 0 ? "влево" : dx > 0 ? "вправо"
                     : dy < 0 ? "вверх" : "вниз") + " на 1 пиксель");
-            button.setLayoutParams(new LinearLayout.LayoutParams(dp(54), dp(46)));
+            button.setLayoutParams(new LinearLayout.LayoutParams(dp(46), dp(38)));
             button.setOnClickListener(v -> nudge(dx, dy));
             return button;
         }
