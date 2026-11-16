@@ -42,8 +42,8 @@ Other Cityray firmware resources have not been verified.
 
 ## 1-pixel positioning controls
 
-Each Clock, Fuel and Temperature `LayerEditor` has an additional d-pad
-below the **existing** coordinates and quick-position presets. Each tap changes
+Each Clock, Fuel and Temperature `LayerEditor` has an additional compact d-pad
+to the **right of the existing X/Y/width/height inputs**, above the quick-position presets. Each tap changes
 only `x` or `y` by one *cluster coordinate pixel* (`SceneConfig.WIDTH=1920`,
 `HEIGHT=532`), subject to `0 <= x <= WIDTH-w` and
 `0 <= y <= HEIGHT-h`. It updates the existing text fields and preview and
