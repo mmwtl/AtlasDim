@@ -5,8 +5,8 @@ plugins {
     id("com.android.application")
 }
 
-val appVersionCode = 58
-val baseVersionName = "0.18.0"
+val appVersionCode = 65
+val baseVersionName = "0.19.0"
 
 // Как в AtlasCodecFix: вне main к версии и имени APK дописывается ветка.
 fun currentGitBranch(): String {
